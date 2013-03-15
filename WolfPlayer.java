@@ -88,6 +88,11 @@ public class WolfPlayer {
 		return nick;
 	}
 	
+	// sets the nick
+	public void setNick(String nick) {
+		this.nick = nick;
+	}
+	
 	// gets the nick
 	public String getUser() {
 		return user;

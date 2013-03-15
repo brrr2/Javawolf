@@ -185,9 +185,33 @@ public class Javawolf extends PircBot {
 				// authenticated with NickServ; join
 				System.out.println("[CONSOLE] : Joining " + channel);
 				this.joinChannel(channel);
-				this.sendMessage("ChanServ", "OP ##javawolf Javawolf");
+				this.sendMessage("ChanServ", "OP " + channel + " " + this.getNick());
 			}
 		}
+	}
+	
+	@Override
+	protected void onNickChange(String oldNick, String login, String hostname, String newNick) {
+		// Player changed nick
+		if(game != null) game.changeNick(oldNick, login, hostname, newNick);
+	}
+	
+	@Override
+	protected void onPart(String channel, String sender, String login, String hostname) {
+		// Player possibly just left the game
+		if(game != null) game.playerLeftChannel(sender, login, hostname);
+	}
+	
+	@Override
+	protected void onQuit(String sourceNick, String sourceLogin, String sourceHostname, String reason) {
+		// Player possibly just left the game
+		if(game != null) game.playerLeftChannel(sourceNick, sourceLogin, sourceHostname);
+	}
+	
+	@Override
+	protected void onKick(String channel, String kickerNick, String kickerLogin, String kickerHostname, String recipientNick, String reason) {
+		// Player may have just been kicked out of the game
+		if(game != null) game.playerKickedFromChannel(recipientNick);
 	}
 	
 	/**

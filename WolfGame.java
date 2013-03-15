@@ -1764,14 +1764,95 @@ public class WolfGame {
 		int matched_player = -1;
 		int m = 0;
 		while(m < playernum) {
-			if(players[m].getNick().toLowerCase().startsWith(nick.toLowerCase())) {
-				if(matched_player == -1) matched_player = m;
-				else return -1; // multiple matches
+			if(players[m].getNick().contentEquals(nick)) {
+				return m; // exact match; return immediately
+			} else if(players[m].getNick().toLowerCase().startsWith(nick.toLowerCase())) {
+				if(matched_player == -1) matched_player = m; // partial match
+				else matched_player = -2; // multiple matches
 			}
 			m++;
 		}
-		// no such player
-		return matched_player;
+		// return the player
+		if(matched_player == -2) return -1;
+		else return matched_player;
+	}
+	
+	/**
+	 * A player changes his nick
+	 * 
+	 * @param oldNick
+	 * @param user
+	 * @param host
+	 * @param newNick
+	 */
+	public void changeNick(String oldNick, String user, String host, String newNick) {
+		// get him
+		int plidx = getPlayer(oldNick, user, host);
+		if(plidx != -1) {
+			players[plidx].setNick(newNick);
+		}
+	}
+	
+	/**
+	 * A player left the channel
+	 * 
+	 * @param nick
+	 * @param user
+	 * @param host
+	 */
+	public void playerLeftChannel(String nick, String user, String host) {
+		// get him
+		int plidx = getPlayer(nick, user, host);
+		if(plidx != -1) {
+			if(isRunning) {
+				// Game is running, kill the player
+				players[plidx].isAlive = false;
+				chanmsg("\u0002" + players[plidx].getNick() + "\u0002 died of an unknown disease. It appears s/he was a \u0002" +
+					players[plidx].getDisplayedRole() + "\u0002.");
+				devoice(players[plidx].getNick());
+				// Does something happen now?
+				if(!checkForEnding()) {
+					if(isNight) {
+						checkEndNight();
+					} else {
+						checkForLynching();
+					}
+				}
+			} else {
+				// No game; delete said player
+				rmvPlayer(nick, user, host);
+			}
+		}
+	}
+	
+	/**
+	 * Player kicked from channel
+	 * 
+	 * @param nick
+	 */
+	public void playerKickedFromChannel(String nick) {
+		// get him
+		int plidx = getPlayer(nick);
+		if(plidx != -1) {
+			if(isRunning) {
+				// Game is running, kill the player
+				players[plidx].isAlive = false;
+				chanmsg("\u0002" + players[plidx].getNick() + "\u0002 was kicked off a cliff. It appears s/he was a \u0002" +
+					players[plidx].getDisplayedRole() + "\u0002.");
+				devoice(players[plidx].getNick());
+				// Does something happen now?
+				if(!checkForEnding()) {
+					if(isNight) {
+						checkEndNight();
+					} else {
+						checkForLynching();
+					}
+				}
+			} else {
+				// No game; delete said player
+				rmvPlayer(nick, players[plidx].getUser(), players[plidx].getHost());
+			}
+		}
 	}
 	
 	/**
