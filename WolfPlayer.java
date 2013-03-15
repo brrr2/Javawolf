@@ -20,6 +20,7 @@ public class WolfPlayer {
 	public boolean isDrunk = false;
 	public boolean isAngel = false;
 	public boolean isDetective = false;
+	public boolean isMedium = false;
 	// secondary roles
 	public boolean isGunner = false;
 	public boolean isCursed = false;
@@ -43,6 +44,8 @@ public class WolfPlayer {
 	public int ided = -1;
 	// Who he has observed
 	public int observed = -1;
+	// Who he has raised
+	public int raised = -1;
 	
 	// Is he even alive?
 	public boolean isAlive = false;
@@ -85,10 +88,21 @@ public class WolfPlayer {
 		return nick;
 	}
 	
+	// gets the nick
+	public String getUser() {
+		return user;
+	}
+	
+	// gets the nick
+	public String getHost() {
+		return host;
+	}
+	
 	// returns the role as displayed to players
 	public String getDisplayedRole() {
 		String str = "";
 		int rolecount = 0;
+		// village primary roles
 		if(isSeer) {
 			str = str + "seer";
 			rolecount++;
@@ -113,11 +127,18 @@ public class WolfPlayer {
 			str = str + "detective";
 			rolecount++;
 		}
+		if(isMedium) {
+			if(rolecount > 0) str = str + " and ";
+			str = str + "medium";
+			rolecount++;
+		}
+		// village secondary roles
 		if(isGunner) {
 			if(rolecount > 0) str = str + " and ";
 			str = str + "gunner";
 			rolecount++;
 		}
+		// wolf roles
 		if(isWolf) {
 			if(rolecount > 0) str = str + " and ";
 			str = str + "wolf";
@@ -147,6 +168,7 @@ public class WolfPlayer {
 		if(isDrunk) rolecount++;
 		if(isAngel) rolecount++;
 		if(isDetective) rolecount++;
+		if(isMedium) rolecount++;
 		if(isWolf) rolecount++;
 		if(isTraitor) rolecount++;
 		if(isWerecrow) rolecount++;
@@ -163,6 +185,7 @@ public class WolfPlayer {
 		if(isDrunk) rolecount++;
 		if(isAngel) rolecount++;
 		if(isDetective) rolecount++;
+		if(isMedium) rolecount++;
 		
 		// done making the role count
 		return rolecount;
@@ -176,6 +199,7 @@ public class WolfPlayer {
 		guarded = -1;
 		ided = -1;
 		observed = -1;
+		raised = -1;
 		canVote = true;
 	}
 }

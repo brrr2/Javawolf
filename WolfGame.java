@@ -1,11 +1,8 @@
 /*
  * Import classes
  */
-
-import java.sql.Time;
 import java.util.Random;
 import java.lang.*;
-import jerklib.Channel;
 
 /**
  * @author Reaper Eternal
@@ -53,7 +50,7 @@ public class WolfGame {
 	// Chance gunner will kill the target
 	private double gunnerheadshotpct = 1 / 5;
 	// Chance wolf will find a gun when killing the gunner
-	private double wolffindgun = 1 / 3;
+	private double wolffindgunpct = 1 / 3;
 	
 	// Time of start of day/night
 	private long starttime = 0;
@@ -123,6 +120,37 @@ public class WolfGame {
 			if(args == null) return;
 			if(args.length < 1) return;
 			id(args[1], nick, user, host);
+		} else if(cmd.compareTo("observe") == 0) {
+			// Used by werecrows to observe players
+			if(args == null) return;
+			if(args.length < 1) return;
+			observe(args[1], nick, user, host);
+		} else if(cmd.compareTo("guard") == 0) {
+			// Used by guardian angels to guard players
+			if(args == null) return;
+			if(args.length < 1) return;
+			guard(args[1], nick, user, host);
+		} else if(cmd.compareTo("raise") == 0) {
+			// Used by mediums to raise players
+			if(args == null) return;
+			if(args.length < 1) return;
+			raise(args[1], nick, user, host);
+		} else if(cmd.compareTo("fendgame") == 0) {
+			// Mod command: Forces the game to end.
+			if(admincheck(host)) {
+				fendgame(nick, user, host);
+			} else {
+				privmsg(nick, "You are not a moderator.");
+			}
+		} else if(cmd.compareTo("cmdchar") == 0) {
+			// Admin command: Changes command character prefix.
+			if(args == null) return;
+			if(args.length < 1) return;
+			if(admincheck(host)) {
+				change_cmdchar(args[1], nick, user, host);
+			} else {
+				privmsg(nick, "You are not a moderator.");
+			}
 		} else if(cmd.compareTo("stats") == 0) {
 			// Who is left in the game?
 			stats(nick, user, host);
@@ -144,6 +172,176 @@ public class WolfGame {
 				}
 			}
 		}
+	}
+	
+	/**
+	 * Used by mediums to raise dead players.
+	 * 
+	 * @param who
+	 * @param nick
+	 * @param user
+	 * @param host
+	 */
+	private void raise(String who, String nick, String user, String host) {
+		if(who == null) return; // Sanity check
+		// Is the game even running?
+		if(!isRunning) {
+			privmsg(nick, "No game is running.");
+			return;
+		}
+		
+		// Is the player even playing?
+		int plidx = getPlayer(nick, user, host);
+		if(plidx != -1) {
+			// Is the player a medium?
+			if(players[plidx].isMedium) {
+				// Is it day?
+				if(!isNight) {
+					// Has the player not yet raised anyone?
+					if(players[plidx].raised == -1) {
+						int targidx = getPlayer(who);
+						// Is the target playing?
+						if(targidx == -1) {
+							privmsg(nick, who + " is not playing.");
+							return;
+						}
+						// Is the target dead? 
+						if(!players[targidx].isAlive) {
+							// raise him
+							chanmsg("\u0002" + players[plidx].getNick() + "\u0002 has cast a seance! The spirit of \u0002" +
+								players[targidx].getNick() + "\u0002 is raised for the day.");
+							voice(players[targidx].getNick()); // Make him able to chat again.
+							players[plidx].raised = targidx;
+						} else {
+							privmsg(nick, players[targidx].getNick() + " is still alive and can be consulted normally.");
+						}
+					} else {
+						privmsg(nick, "You have already raised someone today.");
+					}
+				} else {
+					privmsg(nick, "You may only raise players during the day.");
+				}
+			} else {
+				privmsg(nick, "Only mediums can raise other players.");
+			}
+		} else {
+			privmsg(nick, "You aren't even playing.");
+		}
+		
+		// checks for the end of the night
+		if(checkEndNight()) endNight();
+	}
+	
+	/**
+	 * Guards a player from attacks by the wolves.
+	 * 
+	 * @param who
+	 * @param nick
+	 * @param user
+	 * @param host
+	 */
+	private void guard(String who, String nick, String user, String host) {
+		if(who == null) return; // Sanity check
+		// Is the game even running?
+		if(!isRunning) {
+			privmsg(nick, "No game is running.");
+			return;
+		}
+		
+		// Is the player even playing?
+		int plidx = getPlayer(nick, user, host);
+		if(plidx != -1) {
+			// Is the player a guardian angel?
+			if(players[plidx].isAngel) {
+				// Is it night?
+				if(isNight) {
+					// Has the player not yet guarded?
+					if(players[plidx].guarded == -1) {
+						int targidx = getPlayer(who);
+						// Is the target playing?
+						if(targidx == -1) {
+							privmsg(nick, who + " is not playing.");
+							return;
+						}
+						// Is the target alive? 
+						if(players[targidx].isAlive) {
+							privmsg(nick, "You are guarding \u0002" + players[targidx].getNick() + "\u0002 tonight. Farewell.");
+							privmsg(players[targidx].getNick(), "You can sleep well tonight, for a guardian angel is protecting you.");
+							players[plidx].guarded = targidx;
+						} else {
+							privmsg(nick, players[targidx].getNick() + " is already dead.");
+						}
+					} else {
+						privmsg(nick, "You are already guarding \u0002" + players[players[plidx].guarded].getNick() + "\u0002 tonight.");
+					}
+				} else {
+					privmsg(nick, "You may only guard during the night.");
+				}
+			} else {
+				privmsg(nick, "Only guardian angels can guard other players.");
+			}
+		} else {
+			privmsg(nick, "You aren't even playing.");
+		}
+		
+		// checks for the end of the night
+		if(checkEndNight()) endNight();
+	}
+	
+	/**
+	 * Observes a player to determine whether or not he leaves the house.
+	 * 
+	 * @param who
+	 * @param nick
+	 * @param user
+	 * @param host
+	 */
+	private void observe(String who, String nick, String user, String host) {
+		if(who == null) return; // Sanity check
+		// Is the game even running?
+		if(!isRunning) {
+			privmsg(nick, "No game is running.");
+			return;
+		}
+		
+		// Is the player even playing?
+		int plidx = getPlayer(nick, user, host);
+		if(plidx != -1) {
+			// Is the player a werecrow?
+			if(players[plidx].isWerecrow) {
+				// Is it night?
+				if(isNight) {
+					// Has the player not yet observed?
+					if(players[plidx].observed == -1) {
+						int targidx = getPlayer(who);
+						// Is the target playing?
+						if(targidx == -1) {
+							privmsg(nick, who + " is not playing.");
+							return;
+						}
+						// Is the target alive? 
+						if(players[targidx].isAlive) {
+							privmsg(nick, "You change into a large black crow and fly off to see whether \u0002" + players[targidx].getNick() +
+									"\u0002 remains in bed all night.");
+							players[plidx].observed = targidx;
+						} else {
+							privmsg(nick, players[targidx].getNick() + " is already dead.");
+						}
+					} else {
+						privmsg(nick, "You are already observing \u0002" + players[players[plidx].observed].getNick() + "\u0002 tonight.");
+					}
+				} else {
+					privmsg(nick, "You may only observe during the night.");
+				}
+			} else {
+				privmsg(nick, "Only werecrows can observe other players.");
+			}
+		} else {
+			privmsg(nick, "You aren't even playing.");
+		}
+		
+		// checks for the end of the night
+		if(checkEndNight()) endNight();
 	}
 	
 	/**
@@ -259,11 +457,11 @@ public class WolfGame {
 								// Wolf teammates will deliberately miss other wolves.
 								if((players[plidx].isWolf || players[plidx].isTraitor || players[plidx].isWerecrow) &&
 									(players[targidx].isWolf || players[targidx].isWerecrow)) {
-									chanmsg("\u0002" + players[plidx].getNick() + "\u0002 is a lousy shot! S/he missed!");
+									chanmsg("\u0002" + players[plidx].getNick() + "\u0002 is a lousy shooter! S/he missed!");
 								} else {
-									// Missed target?
-									if(rand.nextDouble() < gunnermisspct) {
-										chanmsg("\u0002" + players[plidx].getNick() + "\u0002 is a lousy shot! S/he missed!");
+									// Missed target? (Drunks have 3x the miss chance.)
+									if(rand.nextDouble() < (players[plidx].isDrunk ? gunnermisspct*3 : gunnermisspct)) {
+										chanmsg("\u0002" + players[plidx].getNick() + "\u0002 is a lousy shooter! S/he missed!");
 									} else {
 										// We hit the target.
 										// Is the shot person a wolf?
@@ -732,7 +930,7 @@ public class WolfGame {
 		if(isRunning) {
 			players[plidx].isAlive = false;
 			// kill him
-			chanmsg(nick + " ate toxic berries and died. It appears s/he was a " + players[plidx].getDisplayedRole() + ".");
+			chanmsg("\u0002" + nick + "\u0002 ate toxic berries and died. It appears s/he was a \u0002" + players[plidx].getDisplayedRole() + "\u0002.");
 			devoice(nick);
 			// Does a something occur now that there is one less player?
 			if(players[plidx].voted >= 0) votes[players[plidx].voted]--; // remove his vote
@@ -782,7 +980,7 @@ public class WolfGame {
 		int m = 0;
 		while(m < playernum) {
 			players[m].isAlive = true;
-			namelist = namelist + players[m].getNick();
+			namelist = namelist + "\u0002" + players[m].getNick() + "\u0002";
 			if(m < playernum - 2) namelist = namelist + ", ";
 			else if(m == playernum - 2) namelist = namelist + ", and ";
 			m++;
@@ -804,8 +1002,9 @@ public class WolfGame {
 		if(playernum <= 5) {
 			// 4 or 5 players
 			wolfcount = 1;
-			detectivecount = 1;
+			angelcount = 1;
 			gunnercount = 1;
+			drunkcount = 1;
 		} else if(playernum <= 7) {
 			// 6 or 7 players
 			seercount = 1;
@@ -827,9 +1026,29 @@ public class WolfGame {
 			cursedcount = 1;
 			drunkcount = 1;
 			gunnercount = 1;
-		} else {
-			// 15+ people
+		} else if(playernum <= 21) {
+			// 15 to 21 people
 			wolfcount = 2;
+			werecrowcount = 1;
+			traitorcount = 1;
+			seercount = 1;
+			cursedcount = 1;
+			drunkcount = 1;
+			gunnercount = 1;
+			detectivecount = 1;
+		} else if(playernum <= 28) {
+			// 22 to 28 people
+			wolfcount = 3;
+			werecrowcount = 1;
+			traitorcount = 1;
+			seercount = 1;
+			cursedcount = 1;
+			drunkcount = 1;
+			gunnercount = 1;
+			detectivecount = 1;
+		} else {
+			// 29+ people
+			wolfcount = 4;
 			werecrowcount = 1;
 			traitorcount = 1;
 			seercount = 1;
@@ -901,7 +1120,7 @@ public class WolfGame {
 		// now the secondary roles
 		while(cursedcount > 0) {
 			pidx = (int)Math.floor(rand.nextDouble()*playernum);
-			if(!players[pidx].isDrunk && !players[pidx].isSeer && !players[pidx].isWolf) {
+			if(!players[pidx].isDrunk && !players[pidx].isSeer && !players[pidx].isWolf && !players[pidx].isWerecrow) {
 				players[pidx].isCursed = true;
 				cursedcount--;
 			}
@@ -993,16 +1212,16 @@ public class WolfGame {
 			int m = 0;
 			while(m < playernum) {
 				// append to string
-				if(players[m].isSeer) msg = msg + players[m].getNick() + " was a seer. ";
-				if(players[m].isDrunk) msg = msg + players[m].getNick() + " was a village drunk. ";
-				if(players[m].isHarlot) msg = msg + players[m].getNick() + " was a harlot. ";
-				if(players[m].isAngel) msg = msg + players[m].getNick() + " was a guardian angel. ";
-				if(players[m].isDetective) msg = msg + players[m].getNick() + " was a detective. ";
-				if(players[m].isGunner) msg = msg + players[m].getNick() + " was a gunner. ";
-				if(players[m].isCursed) msg = msg + players[m].getNick() + " was a cursed villager. ";
-				if(players[m].isWolf) msg = msg + players[m].getNick() + " was a wolf. ";
-				if(players[m].isTraitor) msg = msg + players[m].getNick() + " was a traitor. ";
-				if(players[m].isWerecrow) msg = msg + players[m].getNick() + " was a werecrow. ";
+				if(players[m].isSeer) msg = msg + "\u0002" + players[m].getNick() + "\u0002 was a \u0002seer\u0002. ";
+				if(players[m].isDrunk) msg = msg + "\u0002" + players[m].getNick() + "\u0002 was a \u0002village drunk\u0002. ";
+				if(players[m].isHarlot) msg = msg + "\u0002" + players[m].getNick() + "\u0002 was a \u0002harlot\u0002. ";
+				if(players[m].isAngel) msg = msg + "\u0002" + players[m].getNick() + "\u0002 was a \u0002guardian angel\u0002. ";
+				if(players[m].isDetective) msg = msg + "\u0002" + players[m].getNick() + "\u0002 was a \u0002detective\u0002. ";
+				if(players[m].isGunner) msg = msg + "\u0002" + players[m].getNick() + "\u0002 was a \u0002gunner\u0002. ";
+				if(players[m].isCursed) msg = msg + "\u0002" + players[m].getNick() + "\u0002 was a \u0002cursed villager\u0002. ";
+				if(players[m].isWolf) msg = msg + "\u0002" + players[m].getNick() + "\u0002 was a \u0002wolf\u0002. ";
+				if(players[m].isTraitor) msg = msg + "\u0002" + players[m].getNick() + "\u0002 was a \u0002traitor\u0002. ";
+				if(players[m].isWerecrow) msg = msg + "\u0002" + players[m].getNick() + "\u0002 was a \u0002werecrow\u0002. ";
 				
 				// devoice any living people
 				if(players[m].isAlive) devoice(players[m].getNick());
@@ -1027,7 +1246,7 @@ public class WolfGame {
 			while(m < playernum) {
 				// append to string
 				if(players[m].isSeer) msg = msg + "\u0002" + players[m].getNick() + "\u0002 was a \u0002seer\u0002. ";
-				if(players[m].isDrunk) msg = msg + "\u0002" + players[m].getNick() + "\u0002 was a \u0002drunk\u0002. ";
+				if(players[m].isDrunk) msg = msg + "\u0002" + players[m].getNick() + "\u0002 was a \u0002village drunk\u0002. ";
 				if(players[m].isHarlot) msg = msg + "\u0002" + players[m].getNick() + "\u0002 was a \u0002harlot\u0002. ";
 				if(players[m].isAngel) msg = msg + "\u0002" + players[m].getNick() + "\u0002 was a \u0002guardian angel\u0002. ";
 				if(players[m].isDetective) msg = msg + "\u0002" + players[m].getNick() + "\u0002 was a \u0002detective\u0002. ";
@@ -1201,12 +1420,22 @@ public class WolfGame {
 	 */
 	private void endNight() {
 		int m = 0;
+		Random rand = new Random();
 		// Posts the time the night took
 		long millis = System.currentTimeMillis() - starttime;
 		int secs = (int)(millis / 1000);
 		int mins = (int)(secs / 60);
 		secs = secs % 60;
 		chanmsg("Night lasted " + mins + " minutes and " + secs + " seconds.");
+		// Make the wolf list
+		String wolflist = "| ";
+		m = 0;
+		while(m < playernum) {
+			if(players[m].isWolf) wolflist = wolflist + players[m].getNick() + " (wolf) |";
+			if(players[m].isTraitor) wolflist = wolflist + players[m].getNick() + " (traitor) |";
+			if(players[m].isWerecrow) wolflist = wolflist + players[m].getNick() + " (werecrow) |";
+			m++;
+		}
 		// Announce the end of the night 
 		chanmsg("Dawn breaks! The villagers wake up and look around.");
 		// Tally up the votes and announce the kill
@@ -1218,37 +1447,175 @@ public class WolfGame {
 			chanmsg("The wolves were unable to decide who to kill last night. As a result, all villagers have survived.");
 		} else {
 			// Wolves attack someone
-			// Is the target a harlot who visited someone?
-			if(players[ind].isHarlot && (players[ind].visited >= 0) && (players[ind].visited != ind)) {
-				// Harlot visited someone else
-				chanmsg("The wolves' selected victim was a harlot, but she wasn't home.");
-			} else {
-				chanmsg("The dead body of \u0002" + players[ind].getNick() + "\u0002, a \u0002" + players[ind].getDisplayedRole() + 
-					"\u0002, is found. Those remaining mourn his/her death.");
-				players[ind].isAlive = false;
-				devoice(players[ind].getNick());
-			}
-			// Did any harlots visit the victim?
+			// Is the target protected by a guardian angel?
+			boolean successfullyguarded = false;
 			m = 0;
 			while(m < playernum) {
-				if(players[m].isHarlot) {
-					if(players[m].visited == ind) {
-						// Harlot visited victim and died
-						chanmsg(players[m].getNick() + ", a harlot, made the unfortunate mistake of visiting the victim last night " +
-							"and is now dead.");
-						players[m].isAlive = false;
-						devoice(players[m].getNick());
-					} else if(players[players[m].visited].isWolf || players[players[m].visited].isWerecrow) {
-						// Harlot visited wolf and died
-						chanmsg("\u0002" + players[m].getNick() + "\u0002, a \u0002harlot\u0002, made the unfortunate mistake of " +
-							"visiting a wolf last night and is now dead.");
+				// Is the player a guardian angel?
+				if(players[m].isAngel && players[m].isAlive) {
+					// Did the player guard the victim?
+					if(players[m].guarded == ind) {
+						// Does the angel die in the attempt?
+						if(rand.nextDouble() < dieguardingvictimpct) {
+							chanmsg("\u0002" + players[m].getNick() + "\u0002, a \u0002" + players[m].getDisplayedRole() + 
+									"\u0002, tried to defend the victim, but died in the attempt.");
+								players[m].isAlive = false;
+								devoice(players[m].getNick());
+						} else if(rand.nextDouble() < guardedvictimdiepct) {
+							// Angel failed in the defense.
+							chanmsg("A guardian angel tried to protect \u0002" + players[ind].getNick() + 
+								"\u0002, but s/he was unable to stop the attacks of the wolves and was forced to retreat.");
+						} else {
+							// successful guarding
+							successfullyguarded = true;
+							// Does the angel become a wolf though?
+							if(rand.nextDouble() < infectguardingvictimpct) {
+								privmsg(players[m].getNick(), "While defending the victim, you were slightly injured in the fray. " +
+									"You feel a change coming over you...you have become a \u0002wolf\u0002!");
+								privmsg(players[m].getNick(), wolflist);
+							}
+							// Does the victim turn into a wolf? Obviously, wolfteam won't change.
+							if(!players[ind].isWolf && !players[ind].isTraitor && !players[ind].isWerecrow) {
+								if(rand.nextDouble() < guardedvictiminfectpct) {
+									privmsg(players[ind].getNick(), "Although a guardian angel saved you, you were slightly injured in the fray. " +
+										"You feel a change coming over you...you have become a \u0002wolf\u0002!");
+									privmsg(players[ind].getNick(), wolflist);
+								}
+							}
+						}
+					}
+				}
+				m++;
+			}
+			if(!successfullyguarded) {
+				// Is the target a harlot who visited someone?
+				if(players[ind].isHarlot && (players[ind].visited >= 0) && (players[ind].visited != ind)) {
+					// Harlot visited someone else
+					chanmsg("The wolves' selected victim was a harlot, but she wasn't home.");
+				} else {
+					chanmsg("The dead body of \u0002" + players[ind].getNick() + "\u0002, a \u0002" + players[ind].getDisplayedRole() + 
+						"\u0002, is found. Those remaining mourn his/her death.");
+					players[ind].isAlive = false;
+					devoice(players[ind].getNick());
+					// Wolves might find a gun
+					if(players[ind].isGunner && (players[ind].numBullets > 0)) {
+						if(rand.nextDouble() < wolffindgunpct) {
+							// randomly pick a wolf / traitor to give the gun to
+							int[] wolfidxs = new int[MAX_WOLFPLAYERS];
+							int nWolves = 0;
+							m = 0;
+							while(m < playernum) {
+								if(players[m].isWolf || players[m].isTraitor || players[m].isWerecrow) {
+									wolfidxs[nWolves] = m;
+									nWolves++;
+								}
+								m++;
+							}
+							int pickedwolf = wolfidxs[(int)Math.floor(rand.nextDouble()*nWolves)];
+							players[pickedwolf].isGunner = true;
+							players[pickedwolf].numBullets = players[ind].numBullets; // give him however many bullets remained
+							// notify him
+							privmsg(players[pickedwolf].getNick(), "You find \u0002" + players[ind].getNick() +
+								"'s\u0002 gun with " + players[ind].numBullets + " bullets! Use \"" + Javawolf.cmdchar + 
+								"shoot <name>\" to shoot a player. You will deliberately miss other wolves.");
+						}
+					}
+				}
+				// Did any harlots visit the victim?
+				m = 0;
+				while(m < playernum) {
+					if(players[m].isHarlot && players[m].isAlive) {
+						if(players[m].visited == ind) {
+							// Harlot visited victim and died
+							chanmsg(players[m].getNick() + ", a harlot, made the unfortunate mistake of visiting the victim last night " +
+								"and is now dead.");
+							players[m].isAlive = false;
+							devoice(players[m].getNick());
+						}
+					}
+					// next player
+					m++;
+				}
+			} else {
+				chanmsg("\u0002" + players[ind].getNick() + "\u0002 was attacked by the wolves last night, but luckily, a " +
+					"guardian angel protected him/her.");
+			}
+		}
+		// Did any harlots visit wolves?
+		m = 0;
+		while(m < playernum) {
+			if(players[m].isHarlot && players[m].isAlive) {
+				if(players[players[m].visited].isWolf || players[players[m].visited].isWerecrow) {
+					// Harlot visited wolf and died
+					chanmsg("\u0002" + players[m].getNick() + "\u0002, a \u0002harlot\u0002, made the unfortunate mistake of " +
+						"visiting a wolf last night and is now dead.");
+					players[m].isAlive = false;
+					devoice(players[m].getNick());
+				}
+			}
+			// next player
+			m++;
+		}
+		// Did any guardian angels guard wolves?
+		m = 0;
+		while(m < playernum) {
+			// Is the player a guardian angel?
+			if(players[m].isAngel && players[m].isAlive) {
+				if(players[players[m].guarded].isWolf || players[players[m].guarded].isWerecrow) {
+					// Guarded a wolf
+					if(rand.nextDouble() < dieguardingwolfpct) {
+						chanmsg("\u0002" + players[m].getNick() + "\u0002, a \u0002guardian angel\u0002, made the unfortunate mistake of " +
+							"guarding a wolf last night, tried to escape, but failed. S/he is found dead.");
 						players[m].isAlive = false;
 						devoice(players[m].getNick());
 					}
 				}
-				// next player
-				m++;
 			}
+			m++;
+		}
+		// Werecrows' observations return now
+		m = 0;
+		while(m < playernum) {
+			if(players[m].isAlive) {
+				if(players[m].isWerecrow) {
+					if(players[m].observed != -1) {
+						if(players[players[m].observed].isAlive) {
+							// Did the target stay in bed?
+							if((players[players[m].observed].isSeer && (players[players[m].observed].seen != -1)) ||
+								(players[players[m].observed].isHarlot && (players[players[m].observed].visited != -1)) ||
+								(players[players[m].observed].isAngel && (players[players[m].observed].guarded != -1))) {
+								privmsg(players[m].getNick(), "\u0002" + players[players[m].observed].getNick() + "\u0002 left his/her bed last night.");
+							} else {
+								privmsg(players[m].getNick(), "\u0002" + players[players[m].observed].getNick() + "\u0002 remained in bed all night.");
+							}
+							// Did anyone "visit" the target?
+							int n = 0;
+							while(n < playernum) {
+								if(players[n].isAlive) {
+									if(players[n].isAngel) {
+										if(players[n].guarded == players[m].observed)
+											privmsg(players[m].getNick(), "\u0002" + players[n].getNick() +
+												"\u0002, a \u0002guardian angel\u0002, guarded \u0002" + 
+												players[players[m].observed].getNick() + "\u0002 last night.");
+									} else if(players[n].isSeer) {
+										if(players[n].seen == players[m].observed)
+											privmsg(players[m].getNick(), "\u0002" + players[n].getNick() +
+												"\u0002, a \u0002seer\u0002, saw \u0002" + 
+												players[players[m].observed].getNick() + "\u0002 last night.");
+									} else if(players[n].isHarlot) {
+										if(players[n].visited == players[m].observed)
+											privmsg(players[m].getNick(), "\u0002" + players[n].getNick() +
+												"\u0002, a \u0002harlot\u0002, visited \u0002" + 
+												players[players[m].observed].getNick() + "\u0002 last night.");
+									}
+								}
+								n++;
+							}
+						}
+					}
+				}
+			}
+			m++;
 		}
 		// Reset the players' actions and votes
 		votes = new int[MAX_WOLFPLAYERS];
@@ -1278,6 +1645,17 @@ public class WolfGame {
 			int mins = (int)(secs / 60);
 			secs = secs % 60;
 			chanmsg("Day lasted " + mins + " minutes and " + secs + " seconds.");
+			// Kill any raised spirits again
+			int m = 0;
+			while(m < playernum) {
+				if(players[m].isMedium && (players[m].raised != -1)) {
+					chanmsg("As dusk falls, the spirit of \u0002" + players[players[m].raised].getNick() + "\u0002 returns to rest.");
+					devoice(players[players[m].raised].getNick());
+				}
+				// also reset actions taken
+				players[m].resetActions();
+				m++;
+			}
 			// Starts the night
 			isNight = true;
 			startNight();
@@ -1313,6 +1691,50 @@ public class WolfGame {
 	}
 	
 	/**
+	 * Changes the command character
+	 * 
+	 * @param cmdchar
+	 * @param nick
+	 * @param user
+	 * @param host
+	 */
+	private void change_cmdchar(String cmdchar, String nick, String user, String host) {
+		// notify channel
+		chanmsg("\u0002" + nick + "\u0002 has changed the command prefix to: '" + cmdchar + "'.");
+		Javawolf.cmdchar = cmdchar;
+	}
+	
+	/**
+	 * Forces the game to end.
+	 * 
+	 * @param nick
+	 * @param user
+	 * @param host
+	 */
+	private void fendgame(String nick, String user, String host) {
+		// notify channel
+		chanmsg("\u0002" + nick + "\u0002 has forced the game to end.");
+		// unmute the channel
+		chanunmute();
+		// devoice everyone
+		int m = 0;
+		while(m < playernum) {
+			if(isRunning) {
+				if(players[m].isAlive) devoice(players[m].getNick());
+			} else {
+				devoice(players[m].getNick());
+			}
+			m++;
+		}
+		// reset the game
+		players = new WolfPlayer[MAX_WOLFPLAYERS];
+		votes = new int[MAX_WOLFPLAYERS];
+		isRunning = false;
+		isNight = false;
+		playernum = 0;
+	}
+	
+	/**
 	 * Gets the index for which player matches the nick!user@host
 	 * 
 	 * @param nick
@@ -1339,15 +1761,17 @@ public class WolfGame {
 	 * @return
 	 */
 	private int getPlayer(String nick) {
+		int matched_player = -1;
 		int m = 0;
 		while(m < playernum) {
-			if(players[m].nickmatch(nick)) {
-				return m; // found him
+			if(players[m].getNick().toLowerCase().startsWith(nick.toLowerCase())) {
+				if(matched_player == -1) matched_player = m;
+				else return -1; // multiple matches
 			}
 			m++;
 		}
 		// no such player
-		return -1;
+		return matched_player;
 	}
 	
 	/**
@@ -1426,14 +1850,17 @@ public class WolfGame {
 	 * @param msg
 	 */
 	private void chanmsg(String msg) {
-		Javawolf.mgr.getSession(assocServer).channelSay(assocChannel, msg);
-		try {
-			Thread.sleep(200);
-		} catch(InterruptedException ie) {
-			System.err.println("[CONSOLE] : Could not sleep threading after channel message!");
-			System.err.println("[CONSOLE] : " + ie.getMessage());
-		}
-		//Javawolf.eventbuf.addEvent(BufferedIRC.EVENT_MSG, null, msg);
+		Javawolf.wolfbot.sendMessage(assocChannel, msg);
+	}
+	
+	/**
+	 * Checks to see if the given user is a bot admin
+	 * 
+	 * @param host
+	 * @return
+	 */
+	private boolean admincheck(String host) {
+		return Javawolf.trustedHosts.contains(host);
 	}
 	
 	/**
@@ -1443,28 +1870,21 @@ public class WolfGame {
 	 * @param msg
 	 */
 	private void privmsg(String nick, String msg) {
-		Javawolf.mgr.getSession(assocServer).sayPrivate(nick, msg);
-		try {
-			Thread.sleep(200);
-		} catch(InterruptedException ie) {
-			System.err.println("[CONSOLE] : Could not sleep threading after private message!");
-			System.err.println("[CONSOLE] : " + ie.getMessage());
-		}
-		//Javawolf.eventbuf.addEvent(BufferedIRC.EVENT_MSG, nick, msg);
+		Javawolf.wolfbot.sendMessage(nick, msg);
 	}
 	
 	/**
 	 * Mutes the channel
 	 */
 	private void chanmute() {
-		Javawolf.mgr.getSession(assocServer).mode(Javawolf.mgr.getSession(assocServer).getChannel(assocChannel), "+m");
+		Javawolf.wolfbot.setMode(assocChannel, "+m");
 	}
 	
 	/**
 	 * Unmutes the channel
 	 */
 	private void chanunmute() {
-		Javawolf.mgr.getSession(assocServer).mode(Javawolf.mgr.getSession(assocServer).getChannel(assocChannel), "-m");
+		Javawolf.wolfbot.setMode(assocChannel, "-m");
 	}
 	
 	/**
@@ -1473,15 +1893,7 @@ public class WolfGame {
 	 * @param nick
 	 */
 	private void voice(String nick) {
-		Javawolf.mgr.getSession(assocServer).voice(nick, Javawolf.mgr.getSession(assocServer).getChannel(assocChannel));
-		//Javawolf.mgr.getSession(assocServer).rawSay("MODE " + assocChannel + " +v " + nick);
-		try {
-			Thread.sleep(200);
-		} catch(InterruptedException ie) {
-			System.err.println("[CONSOLE] : Could not sleep threading after voicing!");
-			System.err.println("[CONSOLE] : " + ie.getMessage());
-		}
-		//System.out.println("[CONSOLE] : /raw MODE " + assocChannel + " +v " + nick);
+		Javawolf.wolfbot.voice(assocChannel, nick);
 	}
 	
 	/**
@@ -1490,14 +1902,6 @@ public class WolfGame {
 	 * @param nick
 	 */
 	private void devoice(String nick) {
-		Javawolf.mgr.getSession(assocServer).deVoice(nick, Javawolf.mgr.getSession(assocServer).getChannel(assocChannel));
-		//Javawolf.mgr.getSession(assocServer).rawSay("MODE " + assocChannel + " -v " + nick);
-		try {
-			Thread.sleep(200);
-		} catch(InterruptedException ie) {
-			System.err.println("[CONSOLE] : Could not sleep threading after devoicing!");
-			System.err.println("[CONSOLE] : " + ie.getMessage());
-		}
-		//System.out.println("[CONSOLE] : /raw MODE " + assocChannel + " -v " + nick);
+		Javawolf.wolfbot.deVoice(assocChannel, nick);
 	}
 }
