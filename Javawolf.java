@@ -1,6 +1,8 @@
 /*
  * Import our classes...
  */
+package Javawolf;
+
 import java.io.*;
 import java.util.*;
 import org.jibble.*;
@@ -16,6 +18,8 @@ public class Javawolf extends PircBot {
 	public static Javawolf wolfbot = null;
 	// Channel to enter
 	private String channel = null;
+	// Server we're on
+	private String server = null;
 	// Login string
 	private static String login_str = null;
 	// Command character
@@ -24,6 +28,8 @@ public class Javawolf extends PircBot {
 	public static List<String> trustedHosts = null;
 	// Our game
 	private WolfGame game = null;
+	// Whether to use the welcome message
+	private static boolean useWelcomeMsg = true;
 	
 	// logging
 	private static final int LOG_CONSOLE = 0;
@@ -44,6 +50,7 @@ public class Javawolf extends PircBot {
 	public Javawolf(String server, int port, String channel_to_join, String username, String nick) {
 		// grr, stupid hack
 		Javawolf.wolfbot = this;
+		this.server = server;
 		// connect
 		boolean connected = false;
 		while(!connected) {
@@ -84,6 +91,8 @@ public class Javawolf extends PircBot {
 		String cfgSrv = null, cfgChan = null, cfgUser = null, cfgNick = null, cfgLine = null, variable, value;
 		int cfgPort = 0;
 		BufferedReader cfg = null;
+		WolfConfig wc = null;
+		boolean isPlayerConfig = false;
 		trustedHosts = new ArrayList<String>();
 		// Reads and parses the configuration file
 		try {
@@ -95,45 +104,185 @@ public class Javawolf extends PircBot {
 		}
 		try {
 			while((cfgLine = cfg.readLine()) != null) {
+				cfgLine = cfgLine.trim(); // trim whitespace
 				if(cfgLine.startsWith("#")) continue; // comments
 				if(cfgLine == "") continue; // empty lines
 				// Split along the first ':' character
 				int charLoc = cfgLine.indexOf(":");
 				if(charLoc != -1) {
 					// retrieve what is being set
-					variable = cfgLine.substring(0, charLoc-1).trim().toLowerCase();
+					variable = cfgLine.substring(0, charLoc).trim().toLowerCase();
 					value = cfgLine.substring(charLoc+1).trim();
-					// set variable
-					if(variable.compareTo("nick") == 0) {
-						// nickname
-						cfgNick = value;
-					} else if(variable.compareTo("username") == 0) {
-						// username
-						cfgUser = value;
-					} else if(variable.compareTo("login") == 0) {
-						// username
-						login_str = value;
-					} else if(variable.compareTo("server") == 0) {
-						// username
-						cfgSrv = value;
-					} else if(variable.compareTo("port") == 0) {
-						// username
-						try {
-							cfgPort = Integer.parseInt(value);
-						} catch(NumberFormatException e) {
-							System.err.println("[STARTUP] : Could not parse port: \"" + value + "\"!");
-							System.exit(1);
+					if(!isPlayerConfig) {
+						// set general variables
+						if(variable.compareTo("nick") == 0) {
+							// nickname
+							cfgNick = value;
+						} else if(variable.compareTo("username") == 0) {
+							// username
+							cfgUser = value;
+						} else if(variable.compareTo("login") == 0) {
+							// string to PM to NickServ to identify
+							login_str = value;
+						} else if(variable.compareTo("server") == 0) {
+							// server
+							cfgSrv = value;
+						} else if(variable.compareTo("port") == 0) {
+							// port
+							try {
+								cfgPort = Integer.parseInt(value);
+							} catch(NumberFormatException e) {
+								System.err.println("[STARTUP] : Could not parse port: \"" + value + "\"!");
+								System.exit(1);
+							}
+						} else if(variable.compareTo("channel") == 0) {
+							// channel
+							cfgChan = value;
+						} else if(variable.compareTo("admin") == 0) {
+							// bot admins
+							trustedHosts.add(value);
+						} else if(variable.compareTo("welcome") == 0) {
+							// welcome on join?
+							useWelcomeMsg = Boolean.parseBoolean(value);
+						} else if(variable.compareTo("playerconfig") == 0) {
+							// starts a player configuration setup
+							wc = new WolfConfig();
+							isPlayerConfig = true;
+							int braceLoc = value.indexOf("{");
+							if(braceLoc != -1) {
+								// retrieve what is being set
+								String playerbounds = value.substring(0, braceLoc).trim();
+								int splitLoc = playerbounds.indexOf("-");
+								if(splitLoc != -1) {
+									try {
+										wc.low = Integer.parseInt(playerbounds.substring(0, splitLoc).trim());
+										wc.high = Integer.parseInt(playerbounds.substring(splitLoc+1).trim());
+									} catch(NumberFormatException e) {
+										System.err.println("[STARTUP] : Could not parse integers in player configuration: \"" + cfgLine + "\"!");
+										System.exit(1);
+									}
+								} else {
+									System.err.println("[STARTUP] : Could not parse player configuration: \"" + cfgLine + "\"!");
+									System.exit(1);
+								}
+							} else {
+								System.err.println("[STARTUP] : Could not parse player configuration: \"" + cfgLine + "\"!");
+								System.exit(1);
+							}
+						} else {
+							// unknown variable
+							System.out.println("[STARTUP] : Unknown variable \"" + variable + "\".");
 						}
-					} else if(variable.compareTo("channel") == 0) {
-						// username
-						cfgChan = value;
-					} else if(variable.compareTo("admin") == 0) {
-						// username
-						trustedHosts.add(value);
 					} else {
-						// unknown variable
-						System.out.println("[STARTUP] : Unknown variable \"" + variable + "\".");
+						// set player configuration-specifc variables
+						// ------- VILLAGE PRIMARY ROLES -------
+						if(variable.compareTo("seer") == 0) {
+							// seer count
+							try {
+								wc.seercount = Integer.parseInt(value);
+							} catch(NumberFormatException e) {
+								System.err.println("[STARTUP] : Could not parse seer count: \"" + value + "\"!");
+								System.exit(1);
+							}
+						} else if(variable.compareTo("drunk") == 0) {
+							// drunk count
+							try {
+								wc.drunkcount = Integer.parseInt(value);
+							} catch(NumberFormatException e) {
+								System.err.println("[STARTUP] : Could not parse drunk count: \"" + value + "\"!");
+								System.exit(1);
+							}
+						} else if(variable.compareTo("harlot") == 0) {
+							// harlot count
+							try {
+								wc.harlotcount = Integer.parseInt(value);
+							} catch(NumberFormatException e) {
+								System.err.println("[STARTUP] : Could not parse harlot count: \"" + value + "\"!");
+								System.exit(1);
+							}
+						} else if(variable.compareTo("angel") == 0) {
+							// angel count
+							try {
+								wc.angelcount = Integer.parseInt(value);
+							} catch(NumberFormatException e) {
+								System.err.println("[STARTUP] : Could not parse angel count: \"" + value + "\"!");
+								System.exit(1);
+							}
+						} else if(variable.compareTo("detective") == 0) {
+							// detective count
+							try {
+								wc.detectivecount = Integer.parseInt(value);
+							} catch(NumberFormatException e) {
+								System.err.println("[STARTUP] : Could not parse detective count: \"" + value + "\"!");
+								System.exit(1);
+							}
+						} else if(variable.compareTo("medium") == 0) {
+							// medium count
+							try {
+								wc.mediumcount = Integer.parseInt(value);
+							} catch(NumberFormatException e) {
+								System.err.println("[STARTUP] : Could not parse medium count: \"" + value + "\"!");
+								System.exit(1);
+							}
+						} // ------- VILLAGE SECONDARY ROLES -------
+						else if(variable.compareTo("gunner") == 0) {
+							// gunner count
+							try {
+								wc.gunnercount = Integer.parseInt(value);
+							} catch(NumberFormatException e) {
+								System.err.println("[STARTUP] : Could not parse gunner count: \"" + value + "\"!");
+								System.exit(1);
+							}
+						} else if(variable.compareTo("cursed") == 0) {
+							// cursed count
+							try {
+								wc.cursedcount = Integer.parseInt(value);
+							} catch(NumberFormatException e) {
+								System.err.println("[STARTUP] : Could not parse cursed count: \"" + value + "\"!");
+								System.exit(1);
+							}
+						} // ------- WOLF ROLES -------
+						else if(variable.compareTo("wolf") == 0) {
+							// wolf count
+							try {
+								wc.wolfcount = Integer.parseInt(value);
+							} catch(NumberFormatException e) {
+								System.err.println("[STARTUP] : Could not parse wolf count: \"" + value + "\"!");
+								System.exit(1);
+							}
+						} else if(variable.compareTo("traitor") == 0) {
+							// traitor count
+							try {
+								wc.traitorcount = Integer.parseInt(value);
+							} catch(NumberFormatException e) {
+								System.err.println("[STARTUP] : Could not parse traitor count: \"" + value + "\"!");
+								System.exit(1);
+							}
+						} else if(variable.compareTo("werecrow") == 0) {
+							// werecrow count
+							try {
+								wc.werecrowcount = Integer.parseInt(value);
+							} catch(NumberFormatException e) {
+								System.err.println("[STARTUP] : Could not parse werecrow count: \"" + value + "\"!");
+								System.exit(1);
+							}
+						} else if(variable.compareTo("sorcerer") == 0) {
+							// seer count
+							try {
+								wc.sorcerercount = Integer.parseInt(value);
+							} catch(NumberFormatException e) {
+								System.err.println("[STARTUP] : Could not parse sorcerer count: \"" + value + "\"!");
+								System.exit(1);
+							}
+						} else {
+							// unknown variable
+							System.out.println("[STARTUP] : Unknown player configuration variable \"" + variable + "\".");
+						}
 					}
+				} else if(cfgLine.compareTo("}") == 0) {
+					// End of one <WolfConfig> setup. Add to the list.
+					WolfGame.addconfig(wc);
+					isPlayerConfig = false;
 				}
 			}
 		} catch(IOException e) {
@@ -158,7 +307,7 @@ public class Javawolf extends PircBot {
 			this.sendMessage(channel, "Welcome to javawolf! use " + cmdchar + "join to begin a game.");
 			// create the game
 			logEvent("Generating game....", LOG_CONSOLE, null);
-			game = new WolfGame(channel, "gibson.freenode.net");
+			game = new WolfGame(channel, server);
 		}
 	}
 	
@@ -169,13 +318,15 @@ public class Javawolf extends PircBot {
 			if(game != null) {
 				message = message.trim();
 				String[] args = message.split(" ");
-				String cmd = args[0].substring(1);
+				String cmd = args[0].substring(cmdchar.length());
 				game.parseCommand(cmd, args, sender, login, hostname);
 			} else {
 				// WTH?
 				System.err.println("[GAME STATE ERROR] : Could not pass command. Game set to null!");
 			}
 		}
+		// Reset idlers
+		game.resetidle(sender, login, hostname);
 	}
 	
 	@Override
@@ -211,7 +362,10 @@ public class Javawolf extends PircBot {
 	@Override
 	protected void onKick(String channel, String kickerNick, String kickerLogin, String kickerHostname, String recipientNick, String reason) {
 		// Player may have just been kicked out of the game
-		if(game != null) game.playerKickedFromChannel(recipientNick);
+		if(recipientNick.equalsIgnoreCase(this.getNick())) {
+			// We got kicked.
+			game = null;
+		} else if(game != null) game.playerKickedFromChannel(recipientNick); // Someone else did.
 	}
 	
 	/**

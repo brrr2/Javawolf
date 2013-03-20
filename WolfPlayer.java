@@ -1,6 +1,7 @@
 /*
  * 
  */
+package Javawolf;
 
 /**
  * @author Reaper Eternal
@@ -28,6 +29,7 @@ public class WolfPlayer {
 	public boolean isWolf = false;
 	public boolean isTraitor = false;
 	public boolean isWerecrow = false;
+	public boolean isSorcerer = false;
 	// Number of bullets left
 	public int numBullets = 0;
 	
@@ -46,11 +48,16 @@ public class WolfPlayer {
 	public int observed = -1;
 	// Who he has raised
 	public int raised = -1;
+	// Who he has cursed
+	public int cursed = -1;
 	
 	// Is he even alive?
 	public boolean isAlive = false;
 	// Can he vote?
 	public boolean canVote = true;
+	
+	// last action
+	public long lastaction = -1;
 	
 	/**
 	 * Creates the basic player
@@ -59,10 +66,11 @@ public class WolfPlayer {
 	 * @param newUser
 	 * @param newHost
 	 */
-	public WolfPlayer(String newNick, String newUser, String newHost) {
+	public WolfPlayer(String newNick, String newUser, String newHost, long join) {
 		nick = newNick;
 		user = newUser;
 		host = newHost;
+		lastaction = join;
 	}
 	
 	// Is the player a match to the given player?
@@ -159,6 +167,11 @@ public class WolfPlayer {
 			str = str + "werecrow";
 			rolecount++;
 		}
+		if(isSorcerer) {
+			if(rolecount > 0) str = str + " and ";
+			str = str + "sorcerer";
+			rolecount++;
+		}
 		// no role
 		if(rolecount == 0) str = "villager";
 		// done making the list of roles
@@ -177,6 +190,7 @@ public class WolfPlayer {
 		if(isWolf) rolecount++;
 		if(isTraitor) rolecount++;
 		if(isWerecrow) rolecount++;
+		if(isSorcerer) rolecount++;
 		
 		// done making the role count
 		return rolecount;
@@ -205,6 +219,7 @@ public class WolfPlayer {
 		ided = -1;
 		observed = -1;
 		raised = -1;
+		cursed = -1;
 		canVote = true;
 	}
 }
