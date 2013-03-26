@@ -50,6 +50,8 @@ public class WolfPlayer {
 	public int raised = -1;
 	// Who he has cursed
 	public int cursed = -1;
+	// Who he loves
+	public int lover = -1;
 	
 	// Is he even alive?
 	public boolean isAlive = false;
@@ -58,6 +60,8 @@ public class WolfPlayer {
 	
 	// last action
 	public long lastaction = -1;
+	// Warned of idling?
+	public boolean isIdleWarned = false;
 	
 	/**
 	 * Creates the basic player

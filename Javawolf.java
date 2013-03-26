@@ -5,7 +5,7 @@ package Javawolf;
 
 import java.io.*;
 import java.util.*;
-import org.jibble.*;
+//import org.jibble.*;
 import org.jibble.pircbot.*;
 
 
@@ -18,6 +18,8 @@ public class Javawolf extends PircBot {
 	public static Javawolf wolfbot = null;
 	// Channel to enter
 	private String channel = null;
+	private String wolfChannel = null;
+	private String tavernChannel = null;
 	// Server we're on
 	private String server = null;
 	// Login string
@@ -30,6 +32,8 @@ public class Javawolf extends PircBot {
 	private WolfGame game = null;
 	// Whether to use the welcome message
 	private static boolean useWelcomeMsg = true;
+	// Timing of messages
+	private static long msg_delay = 200;
 	
 	// logging
 	private static final int LOG_CONSOLE = 0;
@@ -47,10 +51,12 @@ public class Javawolf extends PircBot {
 	 * @param username
 	 * @param nick
 	 */
-	public Javawolf(String server, int port, String channel_to_join, String username, String nick) {
+	public Javawolf(String server, int port, String channel_to_join, String username, String nick, String wolfChan_to_join, String tavernChan_to_join) {
 		// grr, stupid hack
 		Javawolf.wolfbot = this;
 		this.server = server;
+		this.setName("Java Wolf Bot v0.2");
+		this.setMessageDelay(msg_delay);
 		// connect
 		boolean connected = false;
 		while(!connected) {
@@ -75,10 +81,12 @@ public class Javawolf extends PircBot {
 				
 			}
 		}
+		// set up channels
+		this.channel = channel_to_join;
+		this.wolfChannel = wolfChan_to_join;
+		this.tavernChannel = tavernChan_to_join;
 		// log in
 		this.sendMessage("NickServ", login_str);
-		
-		channel = channel_to_join;
 	}
 
 	/**
@@ -88,7 +96,7 @@ public class Javawolf extends PircBot {
 	 */
 	public static void main(String[] args) {
 		// initialize variables
-		String cfgSrv = null, cfgChan = null, cfgUser = null, cfgNick = null, cfgLine = null, variable, value;
+		String cfgSrv = null, cfgChan = null, cfgWolfChan = null, cfgTavernChan = null, cfgUser = null, cfgNick = null, cfgLine = null, variable, value;
 		int cfgPort = 0;
 		BufferedReader cfg = null;
 		WolfConfig wc = null;
@@ -138,6 +146,12 @@ public class Javawolf extends PircBot {
 						} else if(variable.compareTo("channel") == 0) {
 							// channel
 							cfgChan = value;
+						} else if(variable.compareTo("wolfchan") == 0) {
+							// channel
+							cfgWolfChan = value;
+						} else if(variable.compareTo("tavernchan") == 0) {
+							// channel
+							cfgTavernChan = value;
 						} else if(variable.compareTo("admin") == 0) {
 							// bot admins
 							trustedHosts.add(value);
@@ -290,7 +304,7 @@ public class Javawolf extends PircBot {
 			System.exit(1);
 		}
 		// create the wolfbot
-		new Javawolf(cfgSrv, cfgPort, cfgChan, cfgUser, cfgNick);
+		new Javawolf(cfgSrv, cfgPort, cfgChan, cfgUser, cfgNick, cfgWolfChan, cfgTavernChan);
 	}
 	
 	@Override
@@ -298,16 +312,20 @@ public class Javawolf extends PircBot {
 		message = message.trim();
 		String[] args = message.split(" ");
 		String cmd = args[0];
+		if(cmd.startsWith(cmdchar)) cmd = cmd.substring(cmdchar.length()); // remove command character
 		game.parseCommand(cmd, args, sender, login, hostname);
 	}
 	
 	@Override
 	protected void onJoin(String channel, String sender, String login, String hostname) {
-		if(sender.contentEquals("Javawolf")) {
-			this.sendMessage(channel, "Welcome to javawolf! use " + cmdchar + "join to begin a game.");
-			// create the game
-			logEvent("Generating game....", LOG_CONSOLE, null);
-			game = new WolfGame(channel, server);
+		// Only generate game when bot joins the main channel.
+		if(sender.contentEquals(this.getNick())) {
+			if(this.channel.contentEquals(channel)) {
+				this.sendMessage(channel, "Welcome to javawolf! use " + cmdchar + "join to begin a game.");
+				// create the game
+				logEvent("Welcome sent. Generating game....", LOG_CONSOLE, null);
+				game = new WolfGame(channel, null, null);
+			}
 		}
 	}
 	
