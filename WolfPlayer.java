@@ -25,6 +25,8 @@ public class WolfPlayer {
 	// secondary roles
 	public boolean isGunner = false;
 	public boolean isCursed = false;
+	// in tavern?
+	public boolean isInTavern = false;
 	// evil roles >:)
 	public boolean isWolf = false;
 	public boolean isTraitor = false;
@@ -58,8 +60,10 @@ public class WolfPlayer {
 	// Can he vote?
 	public boolean canVote = true;
 	
-	// last action
-	public long lastaction = -1;
+	// last actions
+	private static final int MAX_ACTION_STORE = 8;
+	private static final int FLOOD_PROTECT_TIME = 4000; // in ms
+	private long[] actiontimes = new long[MAX_ACTION_STORE];
 	// Warned of idling?
 	public boolean isIdleWarned = false;
 	
@@ -74,7 +78,7 @@ public class WolfPlayer {
 		nick = newNick;
 		user = newUser;
 		host = newHost;
-		lastaction = join;
+		this.addAction(join);
 	}
 	
 	// Is the player a match to the given player?
@@ -184,23 +188,11 @@ public class WolfPlayer {
 	
 	// counts the roles
 	public int countMainRoles() {
-		int rolecount = 0;
-		if(isSeer) rolecount++;
-		if(isHarlot) rolecount++;
-		if(isDrunk) rolecount++;
-		if(isAngel) rolecount++;
-		if(isDetective) rolecount++;
-		if(isMedium) rolecount++;
-		if(isWolf) rolecount++;
-		if(isTraitor) rolecount++;
-		if(isWerecrow) rolecount++;
-		if(isSorcerer) rolecount++;
-		
-		// done making the role count
-		return rolecount;
+		// Return wolf + villager count.
+		return this.countVillageRoles() + this.countWolfRoles();
 	}
 	
-	// counts the roles
+	// counts the villager roles
 	public int countVillageRoles() {
 		int rolecount = 0;
 		if(isSeer) rolecount++;
@@ -214,7 +206,19 @@ public class WolfPlayer {
 		return rolecount;
 	}
 	
-	// resets the actions
+	// counts the wolf roles
+	public int countWolfRoles() {
+		int rolecount = 0;
+		if(isWolf) rolecount++;
+		if(isTraitor) rolecount++;
+		if(isWerecrow) rolecount++;
+		if(isSorcerer) rolecount++;
+		
+		// done making the role count
+		return rolecount;
+	}
+	
+	// resets the actions taken by the player
 	public void resetActions() {
 		voted = -1;
 		seen = -1;
@@ -226,4 +230,33 @@ public class WolfPlayer {
 		cursed = -1;
 		canVote = true;
 	}
+	
+	/**
+	 * Adds an action at the given time.
+	 * 
+	 * @param time
+	 * @return
+	 */
+	public boolean addAction(long time) {
+		int m = 0;
+		while(m <= MAX_ACTION_STORE-2) {
+			actiontimes[m] = actiontimes[m+1];
+			m++;
+		}
+		actiontimes[MAX_ACTION_STORE-1] = time;
+		// Obviously, an action has just occurred.
+		isIdleWarned = false;
+		// Return whether flooding is occurring.
+		return (actiontimes[MAX_ACTION_STORE-1] - actiontimes[0]) < FLOOD_PROTECT_TIME;
+	}
+	
+	/**
+	 * Gets the time of the last action of this player.
+	 * 
+	 * @return
+	 */
+	public long getLastAction() {
+		return actiontimes[MAX_ACTION_STORE-1];
+	}
 }
+

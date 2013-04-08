@@ -1,0 +1,18 @@
+Enhancements:
+  - Implement !fjoin command
+  + Accept commands via NOTICE
+  - Add wolf channel
+  + Add village tavern
+  - Add village tavern channel
+  - Add the jailor role
+  - Add the sympathizer role
+  - Add the cursed seer who sees in reverse
+  + Add reloading of player configs during game
+  - Add ability to execute commands in player configs
+  - Implement !ping command
+  - Implement !wait command
+  - Add player listing to !stats
+
+Bugs:
+  + Sometimes not all users are devoiced when game ends
+  - Configuration file is not being read correctly
