@@ -6,13 +6,19 @@ Enhancements:
   - Add village tavern channel
   - Add the jailor role
   - Add the sympathizer role
-  - Add the cursed seer who sees in reverse
+  + Add the cursed seer who sees in reverse
   + Add reloading of player configs during game
   - Add ability to execute commands in player configs
   - Implement !ping command
-  - Implement !wait command
-  - Add player listing to !stats
+  + Implement !wait command
+  + Add player listing to !stats
+  + Implement !myrole command
+  + Implement !fstart command
+  + Add command bans
+  - Add zombie roles
+  - Implement !roles command
+  - Implement "exotic mode", where roles chosen are random
+  + Add ability to set variables
 
 Bugs:
   + Sometimes not all users are devoiced when game ends
-  - Configuration file is not being read correctly

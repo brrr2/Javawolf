@@ -3,10 +3,18 @@
  */
 package Javawolf;
 
-import java.io.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jibble.pircbot.IrcException;
+import org.jibble.pircbot.NickAlreadyInUseException;
+import org.jibble.pircbot.PircBot;
+import org.jibble.pircbot.User;
 //import org.jibble.*;
-import org.jibble.pircbot.*;
 
 
 /**
@@ -21,7 +29,7 @@ public class Javawolf extends PircBot {
 	private String wolfChannel = null;
 	private String tavernChannel = null;
 	// Server we're on
-	private String server = null;
+	//private String server = null;
 	// Login string
 	private static String login_str = null;
 	// Command character
@@ -30,6 +38,8 @@ public class Javawolf extends PircBot {
 	public static List<String> trustedHosts = null;
 	// Ignored players
 	public static List<String> ignoredHosts = null;
+	// Ignored players
+	public static List<String> cmdBans = null;
 	// Our game
 	private WolfGame game = null;
 	// Whether to use the welcome message
@@ -41,9 +51,9 @@ public class Javawolf extends PircBot {
 	
 	// logging
 	private static final int LOG_CONSOLE = 0;
-	private static final int LOG_PRIVMSG = 1;
-	private static final int LOG_PUBMSG  = 2;
-	private static final int LOG_NOTICE  = 3;
+	//private static final int LOG_PRIVMSG = 1;
+	//private static final int LOG_PUBMSG  = 2;
+	//private static final int LOG_NOTICE  = 3;
 	private static final int LOG_GAME    = 4;
 	
 	/**
@@ -58,7 +68,7 @@ public class Javawolf extends PircBot {
 	public Javawolf(String server, int port, String channel_to_join, String username, String nick, String wolfChan_to_join, String tavernChan_to_join) {
 		// grr, stupid hack
 		Javawolf.wolfbot = this;
-		this.server = server;
+		//this.server = server;
 		this.setMessageDelay(msg_delay);
 		// connect
 		boolean connected = false;
@@ -90,7 +100,7 @@ public class Javawolf extends PircBot {
 		this.wolfChannel = wolfChan_to_join;
 		this.tavernChannel = tavernChan_to_join;
 		// log in
-		this.sendRawLine("USER " + username + " 8 * :" + "Java Wolf Bot v0.2");
+		//this.sendRawLine("USER " + username + " 8 * :" + "Java Wolf Bot v0.2");
 		this.sendMessage("NickServ", login_str);
 	}
 
@@ -101,13 +111,13 @@ public class Javawolf extends PircBot {
 	 */
 	public static void main(String[] args) {
 		// initialize variables
-		String cfgSrv = null, cfgChan = null, cfgWolfChan = null, cfgTavernChan = null, cfgUser = null, cfgNick = null, cfgLine = null, variable, value;
+		String cfgSrv = null, cfgChan = null, cfgWolfChan = null, cfgTavernChan = null, cfgUser = null, cfgNick = null, cfgLine = null,
+			variable = null, value = null;
 		int cfgPort = 0;
 		BufferedReader cfg = null;
-		WolfConfig wc = null;
-		boolean isPlayerConfig = false;
 		trustedHosts = new ArrayList<String>();
 		ignoredHosts = new ArrayList<String>();
+		cmdBans = new ArrayList<String>();
 		// Reads and parses the configuration file
 		try {
 			cfg = new BufferedReader(new FileReader("Javawolf.ini"));
@@ -163,6 +173,9 @@ public class Javawolf extends PircBot {
 					} else if(variable.compareTo("ignored") == 0) {
 						// ignored users
 						ignoredHosts.add(value);
+					} else if(variable.compareTo("cmdban") == 0) {
+						// bot admins
+						cmdBans.add(value.toLowerCase());
 					} else if(variable.compareTo("welcome") == 0) {
 						// welcome on join?
 						useWelcomeMsg = Boolean.parseBoolean(value);
@@ -191,7 +204,7 @@ public class Javawolf extends PircBot {
 		String[] args = message.split(" ");
 		String cmd = args[0];
 		if(cmd.startsWith(cmdchar)) cmd = cmd.substring(cmdchar.length()); // remove command character
-		game.parseCommand(cmd, args, sender, login, hostname);
+		cmdToGame(cmd, args, sender, login, hostname);
 	}
 	
 	@Override
@@ -199,10 +212,48 @@ public class Javawolf extends PircBot {
 		// Only generate game when bot joins the main channel.
 		if(sender.contentEquals(this.getNick())) {
 			if(this.channel.contentEquals(channel)) {
-				this.sendMessage(channel, "Welcome to javawolf! use " + cmdchar + "join to begin a game.");
+				// Joined the main channel.
+				if(useWelcomeMsg) this.sendMessage(channel, "Welcome to javawolf! use " + cmdchar + "join to begin a game.");
 				// create the game
 				logEvent("Welcome sent. Generating game....", LOG_CONSOLE, null);
-				game = new WolfGame(channel, null, null, defaultPConfig);
+				game = new WolfGame(channel, wolfChannel, tavernChannel, defaultPConfig);
+			} else if(this.wolfChannel.contentEquals(channel)) {
+				// Joined the wolf channel.
+			}
+		}
+	}
+	
+	@Override
+	protected void onUserList(String channel, User[] users) {
+		if(this.wolfChannel.contentEquals(channel)) {
+			// Joined the wolf channel.
+			// Kick everybody who isn't ourself or ChanServ.
+			String nick = null;
+			int m = 0;
+			while(m < users.length) {
+				// Retrieve his nick.
+				nick = users[m].getNick();
+				if(nick.contentEquals("ChanServ")) { m++; continue; } // Don't kick ChanServ
+				if(nick.contentEquals(this.getNick())) { m++; continue; } // Don't kick ourself
+				this.kick(wolfChannel, nick, "Clearing wolf channel");
+				//this.sendRawLineViaQueue("KICK " + wolfChannel + " " + nick + " :Clearing wolf channel.");
+				// next guy
+				m++;
+			}
+		} else if(this.tavernChannel.contentEquals(channel)) {
+			// Joined the wolf channel.
+			// Kick everybody who isn't ourself or ChanServ.
+			String nick = null;
+			int m = 0;
+			while(m < users.length) {
+				// Retrieve his nick.
+				nick = users[m].getNick();
+				if(nick.contentEquals("ChanServ")) { m++; continue; } // Don't kick ChanServ
+				if(nick.contentEquals(this.getNick())) { m++; continue; } // Don't kick ourself
+				this.kick(tavernChannel, nick, "Clearing tavern channel");
+				//this.sendRawLineViaQueue("KICK " + wolfChannel + " " + nick + " :Clearing wolf channel.");
+				// next guy
+				m++;
 			}
 		}
 	}
@@ -216,7 +267,7 @@ public class Javawolf extends PircBot {
 				message = message.trim();
 				String[] args = message.split(" ");
 				String cmd = args[0].substring(cmdchar.length());
-				game.parseCommand(cmd, args, sender, login, hostname);
+				cmdToGame(cmd, args, sender, login, hostname);
 			} else {
 				// WTH?
 				System.err.println("[GAME STATE ERROR] : Could not pass command. Game set to null!");
@@ -235,14 +286,44 @@ public class Javawolf extends PircBot {
 				System.out.println("[CONSOLE] : Joining " + channel);
 				this.joinChannel(channel);
 				this.sendMessage("ChanServ", "OP " + channel + " " + this.getNick());
+				if(wolfChannel != null) {
+					this.joinChannel(wolfChannel);
+					this.sendMessage("ChanServ", "OP " + wolfChannel + " " + this.getNick());
+				}
+				if(tavernChannel != null) {
+					this.joinChannel(tavernChannel);
+					this.sendMessage("ChanServ", "OP " + tavernChannel + " " + this.getNick());
+				}
 			}
 		} else if(game != null) {
 			String message = notice.trim();
 			String[] args = message.split(" ");
 			String cmd = args[0];
 			if(cmd.startsWith(cmdchar)) cmd = cmd.substring(cmdchar.length()); // remove command character
-			game.parseCommand(cmd, args, sourceNick, sourceLogin, sourceHostname);
+			cmdToGame(cmd, args, sourceNick, sourceLogin, sourceHostname);
+		} else {
+			// WTH?
+			System.err.println("[GAME STATE ERROR] : Could not pass command. Game set to null! \"" + notice + "\" sent by " + sourceNick + ".");
 		}
+	}
+	
+	/**
+	 * Sends a command to the game.
+	 * 
+	 * @param cmd
+	 * @param args
+	 * @param nick
+	 * @param user
+	 * @param host
+	 */
+	private void cmdToGame(String cmd, String[] args, String nick, String user, String host) {
+		// Is the command banned?
+		if(cmdBans.contains(cmd.toLowerCase())) {
+			this.sendMessage(nick, "The command \"" + cmdchar + cmd + "\" has been banned from use.");
+			return;
+		}
+		// Sends the command to the game.
+		game.parseCommand(cmd, args, nick, user, host);
 	}
 	
 	@Override
