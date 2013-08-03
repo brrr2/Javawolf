@@ -138,6 +138,10 @@ public class WolfPlayer {
 	public String getNick() {
 		return nick;
 	}
+    
+    public String getNickBold(){
+        return Colors.BOLD + nick + Colors.BOLD;
+    }
 	
 	// sets the nick
 	public void setNick(String nick) {
