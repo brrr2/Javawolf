@@ -3,6 +3,8 @@
  */
 package Javawolf;
 
+import org.jibble.pircbot.Colors;
+
 /**
  * @author Reaper Eternal
  *
@@ -124,20 +126,12 @@ public class WolfPlayer {
 	
 	// Is the player a match to the given player?
 	public boolean identmatch(String mNick, String mUser, String mHost) {
-		if((mNick.compareTo(nick) == 0) && (mUser.compareTo(user) == 0) && (mHost.compareTo(host) == 0)) {
-			return true;
-		} else {
-			return false; // nope, not same guy
-		}
+		return mNick.equals(nick) && mUser.equals(user) && mHost.equals(host);
 	}
 	
 	// Does a player begin with the given nick
 	public boolean nickmatch(String mNick) {
-		if(mNick.compareTo(nick) == 0) {
-			return true;
-		} else {
-			return false; // nope, not same guy
-		}
+		return mNick.equals(nick);
 	}
 	
 	// gets the nick
@@ -169,13 +163,11 @@ public class WolfPlayer {
 		// Enumerate roles
 		String[] roleList = new String[32];
 		int count = 0;
-		int m = 0;
-		while(m <= ROLE_WOLF_HIGHBOUND) {
+		for (int m = 0; m <= ROLE_WOLF_HIGHBOUND; m++) {
 			if(roles[m]) {
 				roleList[count] = sz_roles[m].szName;
 				count++;
 			}
-			m++;
 		}
 		// parse into string
 		return parseEnumeratedRoles(roleList, count);
@@ -190,20 +182,18 @@ public class WolfPlayer {
 		// Enumerate roles
 		String[] roleList = new String[32];
 		int count = 0;
-		int m = 0;
-		while(m <= ROLE_WOLF_HIGHBOUND) {
+		for (int m = 0; m <= ROLE_WOLF_HIGHBOUND; m++) {
 			if(roles[m] && sz_roles[m].shownOnDeath) {
 				roleList[count] = sz_roles[m].szName;
 				count++;
 			}
-			m++;
 		}
 		// parse into string
 		return parseEnumeratedRoles(roleList, count);
 	}
 	
 	/**
-	 * Gets the role as ided by detectives.
+	 * Gets the role as IDed by detectives.
 	 * 
 	 * @return
 	 */
@@ -211,13 +201,11 @@ public class WolfPlayer {
 		// Enumerate roles
 		String[] roleList = new String[32];
 		int count = 0;
-		int m = 0;
-		while(m <= ROLE_WOLF_HIGHBOUND) {
+		for (int m = 0; m <= ROLE_WOLF_HIGHBOUND; m++) {
 			if(roles[m] && sz_roles[m].shownOnId) {
 				roleList[count] = sz_roles[m].szName;
 				count++;
 			}
-			m++;
 		}
 		// parse into string
 		return parseEnumeratedRoles(roleList, count);
@@ -232,15 +220,13 @@ public class WolfPlayer {
 		// Enumerate roles
 		String[] roleList = new String[32];
 		int count = 0;
-		int m = 0;
-		while(m <= ROLE_WOLF_HIGHBOUND) {
+		for (int m = 0; m <= ROLE_WOLF_HIGHBOUND; m++) {
 			if(roles[m] && sz_roles[m].shownOnSeen) {
 				roleList[count] = sz_roles[m].szName;
 				count++;
 				// "Wolf" always blocks vision of all other roles
 				if(sz_roles[m].szName.contentEquals("wolf")) return "\u0002wolf\u0002";
 			}
-			m++;
 		}
 		// parse into string
 		return parseEnumeratedRoles(roleList, count);
@@ -249,22 +235,20 @@ public class WolfPlayer {
 	/**
 	 * Parses an enumerated list of roles into a displayable string.
 	 * 
-	 * @param roleList
-	 * @param count
+	 * @param roleList a String array of roles
+	 * @param count 
 	 * @return
 	 */
 	private String parseEnumeratedRoles(String[] roleList, int count) {
-		if(count == 0) return "\u0002villager\u0002";
+		if(count == 0) return Colors.BOLD+"villager"+Colors.BOLD;
 		String str = "";
-		int m = 0;
-		while(m < count) {
-			str = str + "\u0002" + roleList[m] + "\u0002";
+		for (int m = 0; m < count; m++) {
+			str = str + Colors.BOLD + roleList[m] + Colors.BOLD;
 			if(m == count - 2) {
 				str = str + ", and ";
 			} else if(m < count - 2) {
 				str = str + ", ";
 			}
-			m++;
 		}
 		
 		// return the string
@@ -300,11 +284,9 @@ public class WolfPlayer {
 	 * @return
 	 */
 	private int countRoles(int low, int high) {
-		int m = low;
 		int count = 0;
-		while(m <= high) {
+        for (int m = low; m <= high; m++) {
 			if(roles[m]) count++;
-			m++;
 		}
 		// return it
 		return count;
@@ -330,10 +312,8 @@ public class WolfPlayer {
 	 * @return
 	 */
 	public boolean addAction(long time) {
-		int m = 0;
-		while(m <= MAX_ACTION_STORE-2) {
+		for (int m = 0; m <= MAX_ACTION_STORE-2; m++) {
 			actiontimes[m] = actiontimes[m+1];
-			m++;
 		}
 		actiontimes[MAX_ACTION_STORE-1] = time;
 		// Obviously, an action has just occurred.

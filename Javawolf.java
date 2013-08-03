@@ -9,6 +9,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.StringTokenizer;
 
 import org.jibble.pircbot.IrcException;
 import org.jibble.pircbot.NickAlreadyInUseException;
@@ -23,7 +24,7 @@ import org.jibble.pircbot.User;
  */
 public class Javawolf extends PircBot {
 	// Object for sending events
-	public static Javawolf wolfbot = null;
+	public static Javawolf wolfbot;
 	// Channel to enter
 	private String channel = null;
 	private String wolfChannel = null;
@@ -45,7 +46,7 @@ public class Javawolf extends PircBot {
 	// Whether to use the welcome message
 	private static boolean useWelcomeMsg = true;
 	// What player config to load as default
-	private static String defaultPConfig = "default.cfg";
+	private static String defaultPConfig = "sample.cfg";
 	// Timing of messages
 	private static long msg_delay = 200;
 	
@@ -66,8 +67,6 @@ public class Javawolf extends PircBot {
 	 * @param nick
 	 */
 	public Javawolf(String server, int port, String channel_to_join, String username, String nick, String wolfChan_to_join, String tavernChan_to_join) {
-		// grr, stupid hack
-		Javawolf.wolfbot = this;
 		//this.server = server;
 		this.setMessageDelay(msg_delay);
 		// connect
@@ -111,8 +110,8 @@ public class Javawolf extends PircBot {
 	 */
 	public static void main(String[] args) {
 		// initialize variables
-		String cfgSrv = null, cfgChan = null, cfgWolfChan = null, cfgTavernChan = null, cfgUser = null, cfgNick = null, cfgLine = null,
-			variable = null, value = null;
+		String cfgSrv=null, cfgChan=null, cfgWolfChan=null, cfgTavernChan=null;
+        String cfgUser=null, cfgNick=null, cfgLine=null, variable=null, value=null;
 		int cfgPort = 0;
 		BufferedReader cfg = null;
 		trustedHosts = new ArrayList<String>();
@@ -127,74 +126,60 @@ public class Javawolf extends PircBot {
 			System.exit(1);
 		}
 		try {
-			while((cfgLine = cfg.readLine()) != null) {
-				cfgLine = cfgLine.trim(); // trim whitespace
+			while(cfg.ready()) {
+                cfgLine = cfg.readLine().trim(); // trim whitespace
 				if(cfgLine.startsWith("#")) continue; // comments
-				if(cfgLine == "") continue; // empty lines
+				if(cfgLine.equals("")) continue; // empty lines
 				// Split along the first ':' character
-				int charLoc = cfgLine.indexOf(":");
-				if(charLoc != -1) {
-					// retrieve what is being set
-					variable = cfgLine.substring(0, charLoc).trim().toLowerCase();
-					value = cfgLine.substring(charLoc+1).trim();
-					// set general variables
-					if(variable.compareTo("nick") == 0) {
-						// nickname
+                StringTokenizer st = new StringTokenizer(cfgLine, ":");
+                if (st.countTokens() == 2){
+                    variable = st.nextToken().trim().toLowerCase();
+					value = st.nextToken().trim();
+                    if(variable.equals("nick")) {   // nickname
 						cfgNick = value;
-					} else if(variable.compareTo("username") == 0) {
-						// username
+					} else if(variable.equals("username")) {// username
 						cfgUser = value;
-					} else if(variable.compareTo("login") == 0) {
-						// string to PM to NickServ to identify
+					} else if(variable.equals("login")) {   // string to PM to NickServ to identify
 						login_str = value;
-					} else if(variable.compareTo("server") == 0) {
-						// server
+					} else if(variable.equals("server")) {  // server
 						cfgSrv = value;
-					} else if(variable.compareTo("port") == 0) {
-						// port
+					} else if(variable.equals("port")) {    // port
 						try {
 							cfgPort = Integer.parseInt(value);
 						} catch(NumberFormatException e) {
 							System.err.println("[STARTUP] : Could not parse port: \"" + value + "\"!");
 							System.exit(1);
 						}
-					} else if(variable.compareTo("channel") == 0) {
-						// channel
+					} else if(variable.equals("channel")) { // channel
 						cfgChan = value;
-					} else if(variable.compareTo("wolfchan") == 0) {
-						// channel
+					} else if(variable.equals("wolfchan")) {// channel
 						cfgWolfChan = value;
-					} else if(variable.compareTo("tavernchan") == 0) {
-						// channel
+					} else if(variable.equals("tavernchan")) {// channel
 						cfgTavernChan = value;
-					} else if(variable.compareTo("admin") == 0) {
-						// bot admins
+					} else if(variable.equals("admin")) {   // bot admins
 						trustedHosts.add(value);
-					} else if(variable.compareTo("ignored") == 0) {
-						// ignored users
+					} else if(variable.compareTo("ignored") == 0) { // ignored users
 						ignoredHosts.add(value);
-					} else if(variable.compareTo("cmdban") == 0) {
-						// bot admins
+					} else if(variable.compareTo("cmdban") == 0) {  // bot admins
 						cmdBans.add(value.toLowerCase());
-					} else if(variable.compareTo("welcome") == 0) {
-						// welcome on join?
+					} else if(variable.compareTo("welcome") == 0) { // welcome on join?
 						useWelcomeMsg = Boolean.parseBoolean(value);
-					} else if(variable.compareTo("playerconfig") == 0) {
-						// default player config
+					} else if(variable.compareTo("playerconfig") == 0) {    // default player config
 						System.out.println("[STARTUP] : Set configuration file to \"" + value + "\".");
 						defaultPConfig = value;
 					} else {
 						// unknown variable
 						System.out.println("[STARTUP] : Unknown variable \"" + variable + "\".");
 					}
-				}
+                }
+                
 			}
+            // create the wolfbot
+            wolfbot = new Javawolf(cfgSrv, cfgPort, cfgChan, cfgUser, cfgNick, cfgWolfChan, cfgTavernChan);
 		} catch(IOException e) {
 			System.err.println("[STARTUP] : Error processing configuration file. Aborting.");
 			System.exit(1);
 		}
-		// create the wolfbot
-		new Javawolf(cfgSrv, cfgPort, cfgChan, cfgUser, cfgNick, cfgWolfChan, cfgTavernChan);
 	}
 	
 	@Override
@@ -203,8 +188,10 @@ public class Javawolf extends PircBot {
 		message = message.trim();
 		String[] args = message.split(" ");
 		String cmd = args[0];
-		if(cmd.startsWith(cmdchar)) cmd = cmd.substring(cmdchar.length()); // remove command character
-		cmdToGame(cmd, args, sender, login, hostname);
+		if(cmd.startsWith(cmdchar) && cmd.length() > cmdchar.length()){
+            cmd = cmd.substring(cmdchar.length()); // remove command character
+            cmdToGame(cmd, args, sender, login, hostname);
+        }
 	}
 	
 	@Override
@@ -229,31 +216,27 @@ public class Javawolf extends PircBot {
 			// Joined the wolf channel.
 			// Kick everybody who isn't ourself or ChanServ.
 			String nick = null;
-			int m = 0;
-			while(m < users.length) {
+			for (int m = 0; m < users.length; m++) {
 				// Retrieve his nick.
 				nick = users[m].getNick();
-				if(nick.contentEquals("ChanServ")) { m++; continue; } // Don't kick ChanServ
-				if(nick.contentEquals(this.getNick())) { m++; continue; } // Don't kick ourself
+				if(nick.contentEquals("ChanServ") || nick.contentEquals(this.getNick()))
+                    continue; // Don't kick ChanServ, don't kick ourself
 				this.kick(wolfChannel, nick, "Clearing wolf channel");
 				//this.sendRawLineViaQueue("KICK " + wolfChannel + " " + nick + " :Clearing wolf channel.");
 				// next guy
-				m++;
 			}
 		} else if(this.tavernChannel.contentEquals(channel)) {
 			// Joined the wolf channel.
 			// Kick everybody who isn't ourself or ChanServ.
 			String nick = null;
-			int m = 0;
-			while(m < users.length) {
+			for (int m = 0; m < users.length; m++) {
 				// Retrieve his nick.
 				nick = users[m].getNick();
-				if(nick.contentEquals("ChanServ")) { m++; continue; } // Don't kick ChanServ
-				if(nick.contentEquals(this.getNick())) { m++; continue; } // Don't kick ourself
+				if(nick.contentEquals("ChanServ") || nick.contentEquals(this.getNick()))
+                    continue; // Don't kick ChanServ, don't kick ourself
 				this.kick(tavernChannel, nick, "Clearing tavern channel");
 				//this.sendRawLineViaQueue("KICK " + wolfChannel + " " + nick + " :Clearing wolf channel.");
 				// next guy
-				m++;
 			}
 		}
 	}
@@ -266,15 +249,18 @@ public class Javawolf extends PircBot {
 			if(game != null) {
 				message = message.trim();
 				String[] args = message.split(" ");
-				String cmd = args[0].substring(cmdchar.length());
-				cmdToGame(cmd, args, sender, login, hostname);
+                String cmd = args[0];
+                if(cmd.startsWith(cmdchar) && cmd.length() > cmdchar.length()){
+                    cmd = cmd.substring(cmdchar.length());
+                    cmdToGame(cmd, args, sender, login, hostname);
+                }
 			} else {
 				// WTH?
 				System.err.println("[GAME STATE ERROR] : Could not pass command. Game set to null!");
 			}
 		}
 		// Reset idlers
-		if(game != null) game.resetidle(sender, login, hostname);
+		if(game != null) game.resetIdle(sender, login, hostname);
 	}
 	
 	@Override
@@ -299,8 +285,10 @@ public class Javawolf extends PircBot {
 			String message = notice.trim();
 			String[] args = message.split(" ");
 			String cmd = args[0];
-			if(cmd.startsWith(cmdchar)) cmd = cmd.substring(cmdchar.length()); // remove command character
-			cmdToGame(cmd, args, sourceNick, sourceLogin, sourceHostname);
+			if(cmd.startsWith(cmdchar) && cmd.length() > cmdchar.length()){
+                cmd = cmd.substring(cmdchar.length()); // remove command character
+                cmdToGame(cmd, args, sourceNick, sourceLogin, sourceHostname);
+            }
 		} else {
 			// WTH?
 			System.err.println("[GAME STATE ERROR] : Could not pass command. Game set to null! \"" + notice + "\" sent by " + sourceNick + ".");
