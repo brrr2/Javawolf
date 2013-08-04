@@ -58,6 +58,7 @@ public class WolfPlayer {
 	public boolean isSorcerer = false;*/
 	// Number of bullets left
 	public int numBullets = 0;
+    public int votes = 0;
 	// in tavern?
 	public boolean isInTavern = false;
 	
@@ -156,7 +157,7 @@ public class WolfPlayer {
 		return user;
 	}
 	
-	// gets the nick
+	// gets the hostmask
 	public String getHost() {
 		return host;
 	}

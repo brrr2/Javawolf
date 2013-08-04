@@ -30,8 +30,6 @@ public class WolfGame {
 	// Config list
 	private static WolfConfig[] configs = new WolfConfig[64];
 	private static int nCfgs = 0;
-	// Votelist
-	private int[] votes = null;
 	// Maximum player count
 	public static final int MAX_WOLFPLAYERS = 32;
 	
@@ -108,7 +106,6 @@ public class WolfGame {
 		this.tavernChannel = tavernChannel;
 		// creates the lists
 		players = new ArrayList<WolfPlayer>();
-		votes = new int[MAX_WOLFPLAYERS];
 		// loads config
 		loadPConfig(pConfig);
 	}
@@ -1463,8 +1460,8 @@ public class WolfGame {
 			return;
 		}
 		// Add your vote.
-		votes[target]++;
-		if(p.voted >= 0) votes[p.voted]--;
+		target.votes++;
+		if (p.voted != null) p.voted.votes--;
 		p.voted = target;
 		// tells the wolves
 		wolfmsg(formatBold(p.getNick()) + " has selected \u0002" +
@@ -1513,10 +1510,10 @@ public class WolfGame {
 		}
 		// Was this a retraction?
 		if(who == null) {
-			if(p.voted >= 0) {
+			if(p.voted != null) {
 				// retracts the vote
-				votes[p.voted]--;
-				p.voted = -1;
+                p.voted.votes--;
+				p.voted = null;
 				chanmsg(formatBold(nick) + " has retracted his/her vote.");
 			} else {
 				// nobody was voted for
@@ -1535,13 +1532,13 @@ public class WolfGame {
 			return;
 		}
 		// removes the old vote
-		if(p.voted >= 0) {
+		if(p.voted != null) {
 			// retracts the vote
-			votes[p.voted]--;
+			p.voted.votes--;
 		}
 		// adds the new vote
 		p.voted = target;
-		votes[targidx]++;
+		target.votes++;
 		chanmsg(formatBold(nick) + " has voted to lynch " + target.getNickBold() + "!");
 		
 		// Checks to see if a lynching occurs.
@@ -2135,7 +2132,7 @@ public class WolfGame {
 		// Start timing the night
 		starttime = System.currentTimeMillis();
 		// reset the votes
-		votes = new int[MAX_WOLFPLAYERS];
+		resetVotes();
 		// PM all the players their roles
 		String wolflist = "Players: ";
 		String playerlist = "Players: ";
@@ -2291,6 +2288,12 @@ public class WolfGame {
 		};
 		timer.schedule(task, 1000*120);
 	}
+    
+    private void resetVotes(){
+        for (int ctr = 0; ctr < getNumPlayers(); ctr++){
+            getPlayer(ctr).votes = 0;
+        }
+    }
 	
 	/**
 	 * Ends the night
@@ -2496,7 +2499,7 @@ public class WolfGame {
 			}
 		}
 		// Reset the players' actions and votes
-		votes = new int[MAX_WOLFPLAYERS];
+		resetVotes();
 		for (int m = 0; m < getNumPlayers(); m++) {
 			getPlayer(m).resetActions();
 		}
@@ -2556,12 +2559,13 @@ public class WolfGame {
 	private int[] tallyvotes() {
 		int nVotes = -1; // number of votes
 		int indVoted = -1; // who has that number
-		
+		WolfPlayer p;
 		for (int m = 0; m < getNumPlayers(); m++) {
-			if(votes[m] > nVotes) {
-				nVotes = votes[m];
+            p = getPlayer(m);
+			if(p.votes > nVotes) {
+				nVotes = p.votes;
 				indVoted = m;
-			} else if(votes[m] == nVotes) {
+			} else if(p.votes == nVotes) {
 				indVoted = -1; // tie
 			}
 		}
@@ -2747,7 +2751,7 @@ public class WolfGame {
 		}
 		// make new players
 		players.clear();
-		votes = new int[MAX_WOLFPLAYERS];
+		resetVotes();
 		isRunning = false;
 		isNight = false;
 		// new start time
@@ -2776,7 +2780,7 @@ public class WolfGame {
 		// Now dead
 		p.isAlive = false;
 		// Remove vote
-		if(p.voted != null) votes[p.voted]--;
+		if(p.voted != null) p.voted.votes--;
 		// Remove all actions
 		p.resetActions();
 		// Devoice player
