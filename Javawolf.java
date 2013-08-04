@@ -203,7 +203,7 @@ public class Javawolf extends PircBot {
 				if(useWelcomeMsg) this.sendMessage(channel, "Welcome to javawolf! use " + cmdchar + "join to begin a game.");
 				// create the game
 				logEvent("Welcome sent. Generating game....", LOG_CONSOLE, null);
-				game = new WolfGame(channel, wolfChannel, tavernChannel, defaultPConfig);
+				game = new WolfGame(channel, wolfChannel, tavernChannel, defaultPConfig, this);
 			} else if(this.wolfChannel.contentEquals(channel)) {
 				// Joined the wolf channel.
 			}
@@ -355,7 +355,7 @@ public class Javawolf extends PircBot {
 	 * @param type
 	 * @param who
 	 */
-	public static void logEvent(String event, int type, String who) {
+	public void logEvent(String event, int type, String who) {
 		if(type == LOG_CONSOLE) {
 			// console events
 			System.out.println("[CONSOLE] : " + event);

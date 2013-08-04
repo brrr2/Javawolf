@@ -63,23 +63,23 @@ public class WolfPlayer {
 	
 	// --- Indices into <WolfGame.java>'s <players> array ---
 	// Who he has voted for / killed
-	public int voted = -1;
+	public WolfPlayer voted = null;
 	// Who he has seen
-	public int seen = -1;
+	public WolfPlayer seen = null;
 	// Who he has visited
-	public int visited = -1;
+	public WolfPlayer visited = null;
 	// Who he has guarded
-	public int guarded = -1;
+	public WolfPlayer guarded = null;
 	// Who he has id'ed
-	public int ided = -1;
+	public WolfPlayer ided = null;
 	// Who he has observed
-	public int observed = -1;
+	public WolfPlayer observed = null;
 	// Who he has raised
-	public int raised = -1;
+	public WolfPlayer raised = null;
 	// Who he has cursed
-	public int cursed = -1;
+	public WolfPlayer cursed = null;
 	// Who he loves
-	public int lover = -1;
+	public WolfPlayer lover = null;
 	
 	// Is he even alive?
 	public boolean isAlive = false;
@@ -127,6 +127,9 @@ public class WolfPlayer {
 	// Is the player a match to the given player?
 	public boolean identmatch(String mNick, String mUser, String mHost) {
 		return mNick.equals(nick) && mUser.equals(user) && mHost.equals(host);
+	}
+    public boolean identMatch(WolfPlayer wp) {
+		return identmatch(wp.getNick(), wp.getUser(), wp.getHost());
 	}
 	
 	// Does a player begin with the given nick
@@ -298,14 +301,15 @@ public class WolfPlayer {
 	
 	// resets the actions taken by the player
 	public void resetActions() {
-		voted = -1;
-		seen = -1;
-		visited = -1;
-		guarded = -1;
-		ided = -1;
-		observed = -1;
-		raised = -1;
-		cursed = -1;
+		voted = null;
+		seen = null;
+		visited = null;
+		guarded = null;
+		ided = null;
+		observed = null;
+		raised = null;
+		cursed = null;
+        lover = null;
 		canVote = true;
 	}
 	
@@ -334,5 +338,9 @@ public class WolfPlayer {
 	public long getLastAction() {
 		return actiontimes[MAX_ACTION_STORE-1];
 	}
+    
+    public boolean equals(WolfPlayer wp){
+        return identMatch(wp);
+    }
 }
 
