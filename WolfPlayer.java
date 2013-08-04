@@ -162,6 +162,41 @@ public class WolfPlayer {
 		return host;
 	}
 	
+    // Role accessor methods
+    public boolean isWolf(){
+        return roles[ROLE_WOLF];
+    }
+    public boolean isWerecrow(){
+        return roles[ROLE_WERECROW];
+    }
+    public boolean isTraitor(){
+        return roles[ROLE_TRAITOR];
+    }
+    public boolean isSorcerer(){
+        return roles[ROLE_SORCERER];
+    }
+    public boolean isSeer(){
+        return roles[ROLE_SEER];
+    }
+    public boolean isHarlot(){
+        return roles[ROLE_HARLOT];
+    }
+    public boolean isAngel(){
+        return roles[ROLE_ANGEL];
+    }
+    public boolean isDetective(){
+        return roles[ROLE_DETECTIVE];
+    }
+    public boolean isDrunk(){
+        return roles[ROLE_DRUNK];
+    }
+    public boolean isGunner(){
+        return roles[ROLE_GUNNER];
+    }
+    public boolean isMedium(){
+        return roles[ROLE_MEDIUM];
+    }
+
 	/**
 	 * Used to show all the roles on death.
 	 * 

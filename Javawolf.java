@@ -23,32 +23,30 @@ import org.jibble.pircbot.User;
  *
  */
 public class Javawolf extends PircBot {
-	// Object for sending events
-	public static Javawolf wolfbot;
-	// Channel to enter
-	private String channel = null;
-	private String wolfChannel = null;
-	private String tavernChannel = null;
-	// Server we're on
-	//private String server = null;
-	// Login string
-	private static String login_str = null;
+	// Initialization members read from config file
+    private String server;
+    private int port;
+    private String username;
+    private String nick;
+	private String channel;
+	private String wolfChannel;
+	private String tavernChannel;
+    private String login_str;
+	
 	// Command character
-	public static String cmdchar = "!";
+	public String cmdchar = ".";
 	// Trusted players
-	public static List<String> trustedHosts = null;
+	public List<String> trustedHosts = null;
 	// Ignored players
-	public static List<String> ignoredHosts = null;
+	public List<String> ignoredHosts = null;
 	// Ignored players
-	public static List<String> cmdBans = null;
+	public List<String> cmdBans = null;
 	// Our game
 	private WolfGame game = null;
 	// Whether to use the welcome message
-	private static boolean useWelcomeMsg = true;
+	private boolean useWelcomeMsg = true;
 	// What player config to load as default
-	private static String defaultPConfig = "sample.cfg";
-	// Timing of messages
-	private static long msg_delay = 200;
+	private String defaultPConfig = "sample.cfg";
 	
 	// logging
 	private static final int LOG_CONSOLE = 0;
@@ -58,104 +56,51 @@ public class Javawolf extends PircBot {
 	private static final int LOG_GAME    = 4;
 	
 	/**
-	 * Creates the wolfbot
+	 * Creates an instance of Javawolf
 	 * 
-	 * @param server
-	 * @param port
-	 * @param channel_to_join
-	 * @param username
-	 * @param nick
+	 * @param configFile file path of config file
 	 */
-	public Javawolf(String server, int port, String channel_to_join, String username, String nick, String wolfChan_to_join, String tavernChan_to_join) {
-		//this.server = server;
-		this.setMessageDelay(msg_delay);
-		// connect
-		boolean connected = false;
-		while(!connected) {
-			this.setName(nick);
-			this.setLogin(username);
-			try {
-				System.out.println("[CONSOLE] : Connecting to " + server + ":" + port);
-				this.connect(server, port);
-				connected = true;
-				System.out.println("[CONSOLE] : Launching game....");
-			} catch(NickAlreadyInUseException e) {
-				nick = nick + "_";
-				connected = false;
-			} catch(IrcException e) {
-				connected = false;
-			} catch(IOException e) {
-				connected = false;
-			}
-			// wait
-			try {
-				Thread.sleep(1000);
-			} catch(InterruptedException e) {
-				
-			}
-		}
-		// set up channels
-		this.channel = channel_to_join;
-		this.wolfChannel = wolfChan_to_join;
-		this.tavernChannel = tavernChan_to_join;
-		// log in
-		//this.sendRawLine("USER " + username + " 8 * :" + "Java Wolf Bot v0.2");
-		this.sendMessage("NickServ", login_str);
-	}
-
-	/**
-	 * Main entry point
-	 * 
-	 * @param args
-	 */
-	public static void main(String[] args) {
-		// initialize variables
-		String cfgSrv=null, cfgChan=null, cfgWolfChan=null, cfgTavernChan=null;
-        String cfgUser=null, cfgNick=null, cfgLine=null, variable=null, value=null;
-		int cfgPort = 0;
-		BufferedReader cfg = null;
-		trustedHosts = new ArrayList<String>();
+	public Javawolf(String configFile) {
+		setMessageDelay(200);
+        trustedHosts = new ArrayList<String>();
 		ignoredHosts = new ArrayList<String>();
 		cmdBans = new ArrayList<String>();
+        String line, variable=null, value=null;
+		BufferedReader cfg = null;
+        
 		// Reads and parses the configuration file
-		try {
-			cfg = new BufferedReader(new FileReader("Javawolf.ini"));
-		} catch(FileNotFoundException e) {
-			System.err.println("[STARTUP] : Could not load configuration file. Aborting.");
-			System.err.println("[STARTUP] : " + e.getMessage());
-			System.exit(1);
-		}
-		try {
+        try {
+            cfg = new BufferedReader(new FileReader(configFile));
 			while(cfg.ready()) {
-                cfgLine = cfg.readLine().trim(); // trim whitespace
-				if(cfgLine.startsWith("#")) continue; // comments
-				if(cfgLine.equals("")) continue; // empty lines
+                line = cfg.readLine().trim(); // trim whitespace
+				if(line.startsWith("#")) continue; // comments
+				if(line.equals("")) continue; // empty lines
 				// Split along the first ':' character
-                StringTokenizer st = new StringTokenizer(cfgLine, ":");
+                StringTokenizer st = new StringTokenizer(line, ":");
                 if (st.countTokens() == 2){
                     variable = st.nextToken().trim().toLowerCase();
 					value = st.nextToken().trim();
                     if(variable.equals("nick")) {   // nickname
-						cfgNick = value;
+						nick = value;
 					} else if(variable.equals("username")) {// username
-						cfgUser = value;
+						username = value;
 					} else if(variable.equals("login")) {   // string to PM to NickServ to identify
 						login_str = value;
 					} else if(variable.equals("server")) {  // server
-						cfgSrv = value;
+						server = value;
 					} else if(variable.equals("port")) {    // port
 						try {
-							cfgPort = Integer.parseInt(value);
+							port = Integer.parseInt(value);
 						} catch(NumberFormatException e) {
 							System.err.println("[STARTUP] : Could not parse port: \"" + value + "\"!");
 							System.exit(1);
 						}
 					} else if(variable.equals("channel")) { // channel
-						cfgChan = value;
+						channel = value;
 					} else if(variable.equals("wolfchan")) {// channel
-						cfgWolfChan = value;
+						wolfChannel = value;
 					} else if(variable.equals("tavernchan")) {// channel
-						cfgTavernChan = value;
+						tavernChannel = value;
 					} else if(variable.equals("admin")) {   // bot admins
 						trustedHosts.add(value);
 					} else if(variable.compareTo("ignored") == 0) { // ignored users
@@ -174,12 +119,54 @@ public class Javawolf extends PircBot {
                 }
                 
 			}
-            // create the wolfbot
-            wolfbot = new Javawolf(cfgSrv, cfgPort, cfgChan, cfgUser, cfgNick, cfgWolfChan, cfgTavernChan);
-		} catch(IOException e) {
+        } catch(FileNotFoundException e) {
+			System.err.println("[STARTUP] : Could not load configuration file. Aborting.");
+			System.err.println("[STARTUP] : " + e.getMessage());
+			System.exit(1);
+        } catch(IOException e) {
 			System.err.println("[STARTUP] : Error processing configuration file. Aborting.");
 			System.exit(1);
 		}
+        
+        setName(nick);
+        setLogin(username);
+	}
+
+	/**
+	 * Main entry point
+	 * 
+	 * @param args
+	 */
+	public static void main(String[] args) {
+        // Create the wolfbot with the specified configuration file
+        Javawolf wolfbot = new Javawolf("Javawolf.ini");;
+        // Attempt to connect to server 3 times.
+        boolean connected = false;
+        for (int ctr = 0; ctr < 3; ctr++){
+            try {
+                System.out.println("[CONSOLE] : Connecting to " + wolfbot.server + ":" + wolfbot.port);
+                wolfbot.connect(wolfbot.server, wolfbot.port);
+                connected = true;
+                
+                // Log in once connected
+                //this.sendRawLine("USER " + username + " 8 * :" + "Java Wolf Bot v0.2");
+                wolfbot.sendMessage("NickServ", wolfbot.login_str);
+                System.out.println("[CONSOLE] : Launching game....");
+                break;
+            } catch(NickAlreadyInUseException e) { 
+                System.out.println("[CONSOLE] : " + wolfbot.nick + " is in use. Trying " + wolfbot.nick + "_");
+                wolfbot.nick += "_";
+                wolfbot.setName(wolfbot.nick);
+            }    
+            catch(IrcException e) { System.err.println("[CONSOLE] : Caught IrcException...."); } 
+            catch(IOException e) { System.err.println("[CONSOLE] : Caught IOException....");  }
+
+            // Wait 1 second if connection fails
+            try { Thread.sleep(1000); } catch(InterruptedException e) {}
+        }
+        if (!connected){
+            System.err.println("[CONSOLE] :  Unable to connect to server.");
+        }
 	}
 	
 	@Override
@@ -197,14 +184,14 @@ public class Javawolf extends PircBot {
 	@Override
 	protected void onJoin(String channel, String sender, String login, String hostname) {
 		// Only generate game when bot joins the main channel.
-		if(sender.contentEquals(this.getNick())) {
-			if(this.channel.contentEquals(channel)) {
+		if(sender.equals(this.getNick())) {
+			if(this.channel.equals(channel)) {
 				// Joined the main channel.
 				if(useWelcomeMsg) this.sendMessage(channel, "Welcome to javawolf! use " + cmdchar + "join to begin a game.");
 				// create the game
 				logEvent("Welcome sent. Generating game....", LOG_CONSOLE, null);
-				game = new WolfGame(channel, wolfChannel, tavernChannel, defaultPConfig, this);
-			} else if(this.wolfChannel.contentEquals(channel)) {
+                game = new WolfGame(channel, wolfChannel, tavernChannel, defaultPConfig, this);
+			} else if(this.wolfChannel.equals(channel)) {
 				// Joined the wolf channel.
 			}
 		}
@@ -281,6 +268,8 @@ public class Javawolf extends PircBot {
 					this.sendMessage("ChanServ", "OP " + tavernChannel + " " + this.getNick());
 				}
 			}
+        } else if (sourceNick.contains("freenode.net")){ 
+            System.out.println("[CONSOLE] : \"" + notice + "\" sent by " + sourceNick + "." );
 		} else if(game != null) {
 			String message = notice.trim();
 			String[] args = message.split(" ");
@@ -289,7 +278,7 @@ public class Javawolf extends PircBot {
                 cmd = cmd.substring(cmdchar.length()); // remove command character
                 cmdToGame(cmd, args, sourceNick, sourceLogin, sourceHostname);
             }
-		} else {
+        } else {
 			// WTH?
 			System.err.println("[GAME STATE ERROR] : Could not pass command. Game set to null! \"" + notice + "\" sent by " + sourceNick + ".");
 		}
