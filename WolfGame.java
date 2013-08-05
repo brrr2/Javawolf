@@ -116,6 +116,7 @@ public class WolfGame {
 	}
 	
     public WolfPlayer getPlayer(int n){
+        if (n < 0) return null;
         return players.get(n);
     }
     public int getNumPlayers(){
@@ -127,12 +128,51 @@ public class WolfGame {
     public int getNumWolfTeam(){
         return wolfTeam.size();
     }
-    public WolfPlayer getVillagePlayer(int n){
+    public WolfPlayer getVillager(int n){
         return villagers.get(n);
     }
     public int getNumVillagers(){
         return villagers.size();
     }
+    public boolean isAlive(WolfPlayer p){
+        return wolfTeam.contains(p) || villagers.contains(p);
+    }
+    public String getWolfList(){
+        String wolflist = "Players: ";
+        WolfPlayer temp;
+		for (int m = 0; m < getNumWolfTeam(); m++) {
+            temp = getWolfPlayer(m);
+			// Update wolf list
+            wolflist += temp.getNickBold();
+			if(temp.isWolf()) wolflist += " (wolf)";
+			else if(temp.isTraitor()) wolflist += " (traitor)";
+			else if(temp.isWerecrow()) wolflist += " (werecrow)";
+			else if(temp.isSorcerer()) wolflist += " (sorcerer)";
+			// Update player list
+			if(m < (getNumWolfTeam() - 2)) {
+				wolflist += ", ";
+			} else if(m == (getNumWolfTeam() - 2)) {
+				wolflist += ", and ";
+			}
+		}
+        return wolflist;
+    }
+    public String getPlayerList(){
+		String playerlist = "Players: ";
+        WolfPlayer temp;
+		for (int m = 0; m < getNumPlayers(); m++) {
+            temp = getPlayer(m);
+			// Update player list
+			playerlist += temp.getNickBold();
+			if(m < (getNumPlayers() - 2)) {
+				playerlist += ", ";
+			} else if(m == (getNumPlayers() - 2)) {
+				playerlist += ", and ";
+			}
+		}
+        return playerlist;
+    }
+    
     /**
 	 * Gets the index for which player matches the nick!user@host
 	 * 
@@ -623,13 +663,13 @@ public class WolfGame {
 	private void waitstart(String nick, String user, String host) {
 		// Is game running?
 		if(isRunning) {
-			msg(nick, "The game is already running.");
+			notice(nick, "The game is already running.");
 			return;
 		}
 		// Is the user playing?
 		WolfPlayer p = getPlayer(nick, user, host);
 		if(p == null) {
-			msg(nick, "You aren't even playing.");
+			notice(nick, "You aren't even playing.");
 		// Enough !waits yet?
         } else if(nWaitTimes >= maxWaitTimes) {
 			chanmsg("The wait limit has already been reached.");
@@ -660,29 +700,8 @@ public class WolfGame {
 			return;
 		}
 		// PM the player his role.
-		String wolflist = "Players: ";
-		String playerlist = "Players: ";
-        WolfPlayer temp;
-		for (int m = 0; m < getNumPlayers(); m++) {
-            temp = getPlayer(m);
-			// Update wolf list
-			if(temp.isWolf()) wolflist += temp.getNickBold() + " (wolf)";
-			else if(temp.isTraitor()) wolflist += temp.getNickBold() + " (traitor)";
-			else if(temp.isWerecrow()) wolflist += temp.getNickBold() + " (werecrow)";
-			else if(temp.isSorcerer()) wolflist += temp.getNickBold() + " (sorcerer)";
-			else wolflist += temp.getNickBold();
-			// Update player list
-			playerlist += temp.getNickBold();
-			if(m < (getNumPlayers() - 2)) {
-				// add a comma
-				wolflist += ", ";
-				playerlist += ", ";
-			} else if(m == (getNumPlayers() - 2)) {
-				// second-to-last player added, add an "and"
-				wolflist += ", and ";
-				playerlist += ", and ";
-			}
-		}
+		String wolflist = getWolfList();
+		String playerlist = getPlayerList();
 		sendPlayerRole(p, playerlist, wolflist);
 	}
 
@@ -700,7 +719,7 @@ public class WolfGame {
 		System.out.println("[CONSOLE] : " + nick + " issued the CURSE command");
 		// Is the game even running?
 		if(!isRunning) {
-			msg(nick, "No game is running.");
+			notice(nick, "No game is running.");
 			return;
 		}
 		
@@ -723,7 +742,7 @@ public class WolfGame {
         } else if(target == null) {
 			msg(nick, who + " is not playing.");
 		// Is the target alive? 
-        } else if(!target.isAlive) {
+        } else if(!isAlive(target)) {
 			msg(nick, target.getNick() + " is already dead.");
 		// Is the target a wolf?
         } else if(target.roles[WolfPlayer.ROLE_WOLF] || target.roles[WolfPlayer.ROLE_WERECROW]) {
@@ -757,24 +776,23 @@ public class WolfGame {
 	 */
 	private void raise(String who, String nick, String user, String host) {
 		if(who == null) return; // Sanity check
-		// Is the game even running?
-		if(!isRunning) {
-			msg(nick, "No game is running.");
-			return;
-		}
-		
+
 		// Get player and target
 		WolfPlayer p = getPlayer(nick, user, host);
 		WolfPlayer target = getPlayer(who);
+        
+        // Is the game even running?
+        if(!isRunning) {
+			notice(nick, "No game is running.");
         // Is the player even playing?
-		if(p == null) {
-			msg(nick, "You aren't even playing.");
+        } else if(p == null) {
+			notice(nick, "You aren't even playing.");
 		// Is the player a medium?
         } else if (!p.roles[WolfPlayer.ROLE_MEDIUM]) {
-			msg(nick, "Only mediums can raise other players.");
+			notice(nick, "Only mediums can raise other players.");
 		// Is it day?
         } else if (isNight) {
-			msg(nick, "You may only raise players during the day.");
+			notice(nick, "You may only raise players during the day.");
 		// Has the player not yet raised anyone?
         } else if(p.raised != null) {
 			msg(nick, "You have already raised someone today.");
@@ -782,7 +800,7 @@ public class WolfGame {
         } else if(target == null) {
 			msg(nick, who + " is not playing.");
 		// Is the target dead? 
-        } else if(target.isAlive) {
+        } else if(isAlive(target)) {
 			msg(nick, target.getNick() + " is still alive and can be consulted normally.");
 		// raise him
         } else {
@@ -808,23 +826,22 @@ public class WolfGame {
 		if(who == null) return; // Sanity check
 		// Logs the command
 		System.out.println("[CONSOLE] : " + nick + " issued the GUARD command");
-		// Is the game even running?
-		if(!isRunning) {
-			msg(nick, "No game is running.");
-			return;
-		}
-		
-		// Is the player even playing?
+
 		WolfPlayer p = getPlayer(nick, user, host);
         WolfPlayer target = getPlayer(who);
-		if(p == null) {
-			msg(nick, "You aren't even playing.");
+        
+        // Is the game even running?
+        if(!isRunning) {
+			notice(nick, "No game is running.");
+        // Is the player even playing?
+        } else if(p == null) {
+			notice(nick, "You aren't even playing.");
 		// Is the player a guardian angel?
         } else if(!p.isAngel()) {
-			msg(nick, "Only guardian angels can guard other players.");
+			notice(nick, "Only guardian angels can guard other players.");
 		// Is it night?
         } else if(!isNight) {
-			msg(nick, "You may only guard during the night.");
+			notice(nick, "You may only guard during the night.");
 		// Has the player not yet guarded?
         } else if(p.guarded != null) {
 			msg(nick, "You are already guarding " + p.guarded.getNickBold() + " tonight.");
@@ -832,7 +849,7 @@ public class WolfGame {
         } else if(target == null) {
 			msg(nick, who + " is not playing.");
 		// Is the target alive? 
-        } else if(!target.isAlive) {
+        } else if(!isAlive(target)) {
 			msg(nick, target.getNick() + " is already dead.");
 		// Guards the target.
         } else {
@@ -882,7 +899,7 @@ public class WolfGame {
         } else if(target == null) {
 			msg(nick, who + " is not playing.");
         // Is the target alive? 
-		} else if(!target.isAlive) {
+		} else if(!isAlive(target)) {
 			msg(nick, target.getNick() + " is already dead.");
 		// Observe the targetted player.
         } else {
@@ -932,7 +949,7 @@ public class WolfGame {
         } else if(target == null) {
 			msg(nick, who + " is not playing.");
 		// Is the target alive? 
-        } else if(!target.isAlive) {
+        } else if(!isAlive(target)) {
 			msg(nick, target.getNick() + " is already dead.");
 		// id his role
         } else {
@@ -984,7 +1001,7 @@ public class WolfGame {
 			// lol, don't suicide
 			msg(nick, "You're holding it the wrong way!");
 		// Is the target alive? 
-        } else if(!target.isAlive) {
+        } else if(!isAlive(target)) {
 			msg(nick, target.getNick() + " is already dead.");
 		// Do you have any bullets left?
         } else if(p.numBullets == 0) {
@@ -1063,26 +1080,21 @@ public class WolfGame {
 		if(p == null) {
 			notice(nick, "You aren't even playing.");
 		// Is the player alive?
-        } else if(!p.isAlive) {
+        } else if(!isAlive(p)) {
 			notice(nick, "You have died already and thus cannot use the stats command.");
         } else {
             // List all the living players.
-            int nLivingPlayers = getNumVillagers() + getNumWolfTeam();
-            // count them
-            int count = 0;
+            int numLiving = getNumVillagers() + getNumWolfTeam();
             WolfPlayer temp;
-            String str = nick + ": " + nLivingPlayers + " Players: ";
+            String str = nick + ": " + formatBold(numLiving+"") + " players: ";
             for (int m = 0; m < getNumPlayers(); m++) {
                 temp = getPlayer(m);
-                if(temp.isAlive) {
-                    count++;
-                    if(count-nLivingPlayers <= -2) str += " " + temp.getNickBold() + ", ";
-                    else if(count-nLivingPlayers == -1) str += " " + temp.getNickBold() + ", and ";
-                    else if(count-nLivingPlayers == 0) str += " " + temp.getNickBold() + ".";
+                if(isAlive(temp)) {
+                    str += temp.getNick() + ", ";
                 }
             }
             // send to channel
-            chanmsg(str);
+            chanmsg(str.substring(0, str.length()-2));
 
             // counts
             int seercount = 0;
@@ -1098,7 +1110,7 @@ public class WolfGame {
             // count them
             for (int m = 0; m < getNumPlayers(); m++) {
                 temp = getPlayer(m);
-                if(temp.isAlive) {
+                if(isAlive(temp)) {
                     if(temp.isSeer()) seercount++;
                     if(temp.isDrunk()) drunkcount++;
                     if(temp.isAngel()) angelcount++;
@@ -1118,18 +1130,19 @@ public class WolfGame {
             } else {
                 str = nick + ": It is currently day.";
             }
+            
             // wolves
-            if(wolfcount == 1) str += " There is " + formatBold("a wolf") + ".";
-            else if(wolfcount > 1) str += " There are " + formatBold(wolfcount + " wolves") + ".";
-            if(traitorcount == 1) str += " There is " + formatBold("a traitor") + ".";
-            else if(traitorcount > 1) str += " There are " + formatBold(traitorcount + " traitors") + ".";
-            if(werecrowcount == 1) str += " There is \u0002a werecrow\u0002.";
-            else if(werecrowcount > 1) str += " There are \u0002" + werecrowcount + " werecrows\u0002.";
-            if(sorcerercount == 1) str += " There is \u0002a sorcerer\u0002.";
-            else if(sorcerercount > 1) str += " There are \u0002" + sorcerercount + " sorcerers\u0002.";
+            if(wolfcount == 1) str += " There is " + formatBold("1") + " wolf.";
+            else if(wolfcount > 1) str += " There are " + formatBold(wolfcount+"") + " wolves.";
+            if(traitorcount == 1) str += " There is " + formatBold("1") + " traitor.";
+            else if(traitorcount > 1) str += " There are " + formatBold(traitorcount+"") + " traitors.";
+            if(werecrowcount == 1) str += " There is "+formatBold("1") + " werecrow.";
+            else if(werecrowcount > 1) str += " There are " + formatBold(werecrowcount+"") + " werecrows.";
+            if(sorcerercount == 1) str += " There is " + formatBold("1") + " sorcerer.";
+            else if(sorcerercount > 1) str += " There are " + formatBold(sorcerercount+"") + " sorcerers.";
             // villagers
-            if(seercount == 1) str += " There is \u0002a seer\u0002.";
-            else if(seercount > 1) str += " There are \u0002" + seercount + " seers\u0002.";
+            if(seercount == 1) str += " There is " + formatBold("1") + " seer.";
+            else if(seercount > 1) str += " There are " + formatBold(seercount+"") + " seers.";
             if(drunkcount == 1) str += " There is \u0002a village drunk\u0002.";
             else if(drunkcount > 1) str += " There are \u0002" + drunkcount + " village drunks\u0002.";
             if(harlotcount == 1) str += " There is \u0002a  harlot\u0002.";
@@ -1159,7 +1172,7 @@ public class WolfGame {
 		if(p == null) {
 			notice(nick, "You aren't even playing.");
 		// Is the player alive?
-        } else if(!p.isAlive) {
+        } else if(!isAlive(p)) {
 			notice(nick, "You have died already and thus cannot use the votes command.");
         } else if(isNight){
             notice(nick, "It is currently night.");
@@ -1173,25 +1186,25 @@ public class WolfGame {
             WolfPlayer temp, temp2;
             for (int ctr = 0; ctr < getNumPlayers(); ctr++){
                 temp = getPlayer(ctr);
-                if (temp.isAlive && temp.votes > 0){
+                if (isAlive(temp) && temp.votes > 0){
                     int votes = 0;
-                    voteStr += temp.getNick() + ": (";
+                    voteStr += temp.getNick() + ": " + temp.votes + " (";
                     for (int ctr2 = 0; ctr2 < getNumPlayers(); ctr2++){
                         temp2 = getPlayer(ctr2);
                         if (temp2.voted == temp){
                             votes++;
                             voteStr += temp2.getNick();
                             if (votes < temp.votes) 
-                                voteStr += ", ";
+                                voteStr += " ";
                         }
                     }
-                    voteStr += "),";
+                    voteStr += "), ";
                 }
             }
             if (voteStr.equals(nick + ": ")){
                 chanmsg(voteStr + "No votes yet.");
             } else {
-                chanmsg(voteStr.substring(0,voteStr.length()-1));
+                chanmsg(voteStr.substring(0, voteStr.length()-2));
             }
             
             // Output vote requirements
@@ -1282,7 +1295,7 @@ public class WolfGame {
         } else if(target == null) {
 			msg(nick, who + " is not playing.");
         // Is the target alive?
-        } else if(!target.isAlive) { 
+        } else if(!isAlive(target)) { 
 			msg(nick, "Eww! " + target.getNickBold() + " is already dead.");
         // Visiting yourself?
         } else if(target == p) {
@@ -1339,7 +1352,7 @@ public class WolfGame {
         } else if(target == null) {
 			msg(nick, who + " is not playing.");
 		// Is the target alive? 
-		} else if(!target.isAlive) {
+		} else if(!isAlive(target)) {
 			msg(nick, target.getNick() + " is already dead.");
 		// PM the vision
         } else {
@@ -1382,7 +1395,7 @@ public class WolfGame {
         } else if(target == null) {
 			msg(nick, who + " is not playing.");
 		// Is the target alive? 
-        } else if(!target.isAlive) {
+        } else if(!isAlive(target)) {
 			msg(nick, target.getNick() + " is already dead.");
 		// Notifies tavern
         } else {
@@ -1426,7 +1439,7 @@ public class WolfGame {
         } else if(target == null) {
 			msg(nick, who + " is not playing.");
 		// Is the target alive? 
-        } else if(!target.isAlive) {
+        } else if(!isAlive(target)) {
 			msg(nick, target.getNick() + " is already dead.");
         } else {
             if(tavernChannel == null) {
@@ -1473,7 +1486,7 @@ public class WolfGame {
 		if(p == null) {
 			msg(nick, "You aren't even playing.");
 		// Is the player alive?
-		} else if(!p.isAlive) {
+		} else if(!isAlive(p)) {
 			msg(nick, "Dead players aren't going to be killing people anytime soon.");
 		// Is the player a wolf?
 		} else if(!p.isWolf() && !p.isWerecrow()) {
@@ -1485,7 +1498,7 @@ public class WolfGame {
 		} else if(target == null) {
 			msg(nick, who + " is not playing.");
 		// Is the target alive? 
-		} else if(!target.isAlive) {
+		} else if(!isAlive(target)) {
 			msg(nick, target.getNick() + " is already dead.");
 		// Did you target yourself?
 		} else if (p == target) {
@@ -1536,7 +1549,7 @@ public class WolfGame {
 		if (p == null) {
 			msg(nick, "You aren't even playing.");
 		// Dead people may not vote
-        } else if(!p.isAlive) {
+        } else if(!isAlive(p)) {
 			msg(nick, "Dead players may not vote.");
 		// Was this a retraction?
         } else if(who == null) {
@@ -1553,7 +1566,7 @@ public class WolfGame {
         } else if(target == null) {
 			msg(nick, who + " is not playing.");
 		// You also cannot vote for dead people
-        } else if(!target.isAlive) {
+        } else if(!isAlive(target)) {
 			msg(nick, "He's already dead! Leave the body in its grave.");
 		// removes the old vote
         } else {
@@ -1583,15 +1596,16 @@ public class WolfGame {
 		System.out.println("[CONSOLE] : " + nick + " issued the JOIN command");
 		// Is the game already in progress?
 		if(isRunning) {
-			msg(nick, "The game is already in progress. Please wait patiently for it to end.");
-		} else {
+			notice(nick, "The game is already in progress. Please wait patiently for it to end.");
+        // Has player already joined?
+		} else if(getPlayer(nick, user, host) != null) {
+            notice(nick, "You have already joined the game.");
+        // Has max player count been reached
+        } else if (getNumPlayers() == MAX_WOLFPLAYERS){
+            chanmsg("Maximum number of players has been reached.");
+        } else {
             // Joins the game.
-            if(addPlayer(nick, user, host)) {
-                chanmsg(formatBold(nick) + " has joined the game.");
-                voice(nick);
-            } else {
-                msg(nick, "You cannot join the game at this time.");
-            }
+            addPlayer(nick, user, host);
         }
 	}
 	
@@ -1612,8 +1626,7 @@ public class WolfGame {
 			msg(nick, "You aren't playing.");
 		// Is the game already in progress?
         } else if(isRunning) {
-			if(p.isAlive) {
-				p.isAlive = false;
+			if(isAlive(p)) {
 				// kill him
 				chanmsg(p.getNickBold() + " ate toxic berries and died. It appears s/he was a " +
 					formatBold(p.getDeathDisplayedRole()) + "");
@@ -1647,19 +1660,17 @@ public class WolfGame {
 	 * @param forced
 	 */
 	private void startgame(String nick, String user, String host, boolean forced) {
-		// Has the game already begun?
-		if(isRunning) {
-			msg(nick, "The game has already begun.");
-			return;
-		}
 		// Logs the command
 		System.out.println("[CONSOLE] : " + nick + " issued the START command");
 		WolfPlayer p = getPlayer(nick, user, host);
 		long gamestart = System.currentTimeMillis();
         
+        // Has the game already begun?
+		if (isRunning) {
+			notice(nick, "The game has already begun.");
         // Is the starter even in the game?
-		if (p == null) {
-			msg(nick, "You aren't even playing.");
+		} else if (p == null) {
+			notice(nick, "You're currently not joined.");
 		// Waited long enough?
         } else if((gamestart < gameAllowStart) && !forced) {
 			long secondsleft = (gameAllowStart - gamestart) / 1000;
@@ -1687,7 +1698,6 @@ public class WolfGame {
             WolfPlayer temp;
             for (int m = 0; m < getNumPlayers(); m++) {
                 temp = getPlayer(m);
-                temp.isAlive = true;
                 temp.addAction(gamestart); // set them all to having spoken now
                 namelist += temp.getNickBold();
                 if(m < getNumPlayers() - 2) namelist += ", ";
@@ -1887,7 +1897,7 @@ public class WolfGame {
 		for (int m = 0; m < getNumPlayers(); m++) {
             temp = getPlayer(m);
 			// Is he even alive?
-			if(!temp.isAlive) {
+			if(!isAlive(temp)) {
 				continue;
 			}
  			// Is he idle?
@@ -1962,14 +1972,14 @@ public class WolfGame {
 		for (int m = 0; m < getNumPlayers(); m++) {
             temp = getPlayer(m);
 			// Dead players don't count
-			if(temp.isAlive){
-                if(temp.isSeer() && (temp.seen == null)) return false; // Seer didn't see
-                if(temp.isHarlot() && (temp.visited == null)) return false; // Harlot didn't visit
-                if(temp.isWolf() && (temp.voted == null)) return false; // Wolf didn't kill
-                if(temp.isAngel() && (temp.guarded == null)) return false; // Angel hasn't guarded
-                if(temp.isWerecrow() && (temp.voted == null)) return false; // Crow hasn't killed
-                if(temp.isWerecrow() && (temp.observed == null)) return false; // Crow hasn't observed
-                if(temp.isSorcerer() && (temp.cursed == null)) return false; // Sorcerer hasn't cursed
+			if(isAlive(temp)){
+                if(temp.isSeer() && temp.seen == null) return false; // Seer didn't see
+                if(temp.isHarlot() && temp.visited == null) return false; // Harlot didn't visit
+                if(temp.isWolf() && temp.voted == null) return false; // Wolf didn't kill
+                if(temp.isAngel() && temp.guarded == null) return false; // Angel hasn't guarded
+                if(temp.isWerecrow() && temp.voted == null && temp.observed == null) 
+                    return false; // Crow hasn't killed or observed
+                if(temp.isSorcerer() && temp.cursed == null) return false; // Sorcerer hasn't cursed
             }
         }
 		
@@ -1995,7 +2005,7 @@ public class WolfGame {
 			// Find the voters.
 			for (int m = 0; m < getNumPlayers(); m++) {
                 temp = getPlayer(m);
-				if(temp.isAlive && temp.canVote) {
+				if(isAlive(temp) && temp.canVote) {
 					voters[count] = m;
 					count++;
 				}
@@ -2090,8 +2100,8 @@ public class WolfGame {
 		for (int m = 0; m < getNumWolfTeam(); m++) {
             temp = getWolfPlayer(m);
 			// only consider living wolves
-			if(temp.isAlive && (temp.isWolf() || temp.isWerecrow()) ){
-                    nWolves++;
+			if(temp.isWolf() || temp.isWerecrow()){
+                nWolves++;
 			}
 		}
 		
@@ -2109,7 +2119,7 @@ public class WolfGame {
 		for (int m = 0; m < getNumPlayers(); m++) {
             temp = getPlayer(m);
 			// only consider living players
-			if(temp.isAlive && temp.canVote) 
+			if(isAlive(temp) && temp.canVote) 
                 nVoters++;
 		}
 		
@@ -2123,43 +2133,26 @@ public class WolfGame {
 		System.out.println("[CONSOLE] : Starting the night.");
 		// Start timing the night
 		starttime = System.currentTimeMillis();
-		// reset the votes
-		resetVotes();
-		// PM all the players their roles
-		String wolflist = "Players: ";
-		String playerlist = "Players: ";
-        WolfPlayer temp;
-		for (int m = 0; m < getNumPlayers(); m++) {
-            temp = getPlayer(m);
-			// Update wolf list
-			if(temp.isWolf()) wolflist += temp.getNickBold() + " (wolf)";
-			else if(temp.isTraitor()) wolflist += temp.getNickBold() + " (traitor)";
-			else if(temp.isWerecrow()) wolflist += temp.getNickBold() + " (werecrow)";
-			else if(temp.isSorcerer()) wolflist += temp.getNickBold() + " (sorcerer)";
-			else wolflist += temp.getNickBold();
-			// Update player list
-			playerlist += temp.getNickBold();
-			if(m < (getNumPlayers() - 2)) {
-				// add a comma
-				wolflist += ", ";
-				playerlist += ", ";
-			} else if(m == (getNumPlayers() - 2)) {
-				// second-to-last player added, add an "and"
-				wolflist += ", and ";
-				playerlist += ", and ";
-			}
-		}
-		for (int m = 0; m < getNumPlayers(); m++) {
-			// ignore dead people
-			if(getPlayer(m).isAlive) {
-				sendPlayerRole(getPlayer(m), playerlist, wolflist);
-			}
+        isNight = true;
+        resetVotes();
+        
+		String wolflist = getWolfList();
+		String playerlist = getPlayerList();
+
+        // PM wolves their roles
+        for (int ctr = 0; ctr < getNumWolfTeam(); ctr++){
+            sendPlayerRole(getWolfPlayer(ctr), playerlist, wolflist);
+        }
+        // PM villagers their roles
+		for (int ctr = 0; ctr < getNumVillagers(); ctr++) {
+            sendPlayerRole(getVillager(ctr), playerlist, wolflist);
 		}
 		// Announce the night to the players
 		chanmsg("It is now night, and the villagers all retire to their beds. The full moon rises in the east, casting long, eerie " +
 			"shadows across the village. A howl breaks out, as the wolves come out to slay someone.");
 		chanmsg("Please check for private messages from me. If you have none, simply sit back and wait patiently for morning.");
-		// Schedule a warning event.
+		
+        // Schedule a warning event.
 		timer = new Timer();
 		TimerTask task = new TimerTask() {
 			public void run() {
@@ -2169,6 +2162,216 @@ public class WolfGame {
 		timer.schedule(task, 1000*90);
 	}
 	
+    /**
+	 * Ends the night
+	 */
+	private void endNight() {
+		System.out.println("[CONSOLE] : Ending the night.");
+		timer.cancel();
+		
+		Random rand = new Random();
+		// Posts the time the night took
+		long millis = System.currentTimeMillis() - starttime;
+		int secs = (int)(millis / 1000);
+		int mins = (int)(secs / 60);
+		secs = secs % 60;
+		chanmsg("Night lasted " + formatBold(mins + ":" + (secs < 10 ? "0" + secs : secs)) + ". Dawn breaks! The villagers wake up and look around.");
+		
+        // Make the wolf list
+		String wolflist = getWolfList();
+        WolfPlayer temp;
+
+		// Tally up the votes and announce the kill
+		int[] voteresults = tallyvotes();
+		WolfPlayer voteKill = getPlayer(voteresults[1]);
+		if(voteKill == null) {
+			// LOL
+			chanmsg("The wolves were unable to decide who to kill last night. As a result, all villagers have survived.");
+		} else {
+			// Wolves attack someone
+			// Is the target protected by a guardian angel?
+			boolean successfullyguarded = false;
+			for (int m = 0; m < getNumPlayers(); m++) {
+                temp = getPlayer(m);
+				// Is the player a guardian angel?
+				if(temp.isAngel() && isAlive(temp)) {
+					// Did the player guard the victim?
+					if(temp.guarded == voteKill) {
+						// Does the angel die in the attempt?
+						if(rand.nextDouble() < dieguardingvictimpct) {
+							chanmsg(temp.getNickBold() + ", a " + formatBold(temp.getDeathDisplayedRole()) + 
+									", tried to defend the victim, but died in the attempt.");
+							playerDeath(temp);
+						} else if(rand.nextDouble() < guardedvictimdiepct) {
+							// Angel failed in the defense.
+							chanmsg("A guardian angel tried to protect " + voteKill.getNickBold() + 
+								", but s/he was unable to stop the attacks of the wolves and was forced to retreat.");
+						} else {
+							// successful guarding
+							successfullyguarded = true;
+							// Does the angel become a wolf though?
+							if(rand.nextDouble() < infectguardingvictimpct) {
+								msg(temp.getNick(), "While defending the victim, you were slightly injured in the fray. " +
+									"You feel a change coming over you...you have become a \u0002wolf\u0002!");
+								msg(temp.getNick(), wolflist);
+							}
+							// Does the victim turn into a wolf? Obviously, wolfteam won't change.
+							if(voteKill.countWolfRoles() == 0) {
+								if(rand.nextDouble() < guardedvictiminfectpct) {
+									msg(voteKill.getNick(), "Although a guardian angel saved you, you were slightly injured in the fray. " +
+										"You feel a change coming over you...you have become a \u0002wolf\u0002!");
+									msg(voteKill.getNick(), wolflist);
+								}
+							}
+						}
+					}
+				}
+			}
+			if(!successfullyguarded) {
+				// Is the target a harlot who visited someone other than himself?
+				if(voteKill.isHarlot() && (voteKill.visited != null) && (voteKill.visited != voteKill)) {
+					// Harlot visited someone else
+					chanmsg("The wolves' selected victim was a harlot, but she wasn't home.");
+				} else {
+					chanmsg("The dead body of " + voteKill.getNickBold() + ", a " + 
+                            formatBold(voteKill.getDeathDisplayedRole()) + 
+						", is found. Those remaining mourn his/her death.");
+					playerDeath(voteKill);
+					// Wolves might find a gun
+					if(voteKill.isGunner() && (voteKill.numBullets > 0)) {
+						if(rand.nextDouble() < wolffindgunpct) {
+							// randomly pick a wolfteam member to give the gun to
+							int[] wolfidxs = new int[MAX_WOLFPLAYERS];
+							int nWolves = 0;
+							for (int m = 0; m < getNumPlayers(); m++) {
+								if(getPlayer(m).countWolfRoles() > 0) {
+									wolfidxs[nWolves] = m;
+									nWolves++;
+								}
+							}
+							int pickedwolf = wolfidxs[(int)Math.floor(rand.nextDouble()*nWolves)];
+							getPlayer(pickedwolf).roles[WolfPlayer.ROLE_GUNNER] = true;
+							getPlayer(pickedwolf).numBullets = voteKill.numBullets; // give him however many bullets remained
+							// notify him
+							msg(getPlayer(pickedwolf).getNick(), "You find " + voteKill.getNickBold() +
+								"'s gun with " + voteKill.numBullets + " bullets! Use \"" + wolfBot.cmdchar + 
+								"shoot <name>\" to shoot a player. You will deliberately miss other wolves.");
+						}
+					}
+				}
+				// Did any harlots visit the victim?
+				for (int m = 0; m < getNumVillagers(); m++) {
+                    temp = getVillager(m);
+					if(temp.isHarlot() && isAlive(temp) && temp.visited == voteKill) {
+                        // Harlot visited victim and died
+                        chanmsg(temp.getNickBold() + ", a harlot, made the unfortunate mistake of visiting the victim last night " +
+                            "and is now dead.");
+                        playerDeath(temp);
+					}
+				}
+			} else {
+				chanmsg(voteKill.getNickBold() + " was attacked by the wolves last night, but luckily, a " +
+					"guardian angel protected him/her.");
+			}
+		}
+		// Did any harlots visit wolves?
+		for (int m = 0; m < getNumVillagers(); m++) {
+            temp = getVillager(m);
+			if(temp.isHarlot() && isAlive(temp) && (temp.visited != null) && !(temp.visited == temp)) {
+				if((temp.visited.isWolf() || temp.visited.isWerecrow()) &&
+						!(temp.visited == temp.lover)) {
+					// Harlot visited wolf and died
+					chanmsg(temp.getNickBold() + ", a \u0002harlot\u0002, made the unfortunate mistake of " +
+						"visiting a wolf last night and is now dead.");
+					playerDeath(temp);
+				}
+			}
+		}
+		// Did any guardian angels guard wolves?
+		for (int m = 0; m < getNumVillagers(); m++) {
+            temp = getVillager(m);
+			// Is the player a guardian angel?
+			if(temp.isAngel() && isAlive(temp)) {
+				if(temp.guarded.isWolf() || temp.guarded.isWerecrow()) {
+					// Guarded a wolf
+					if(rand.nextDouble() < dieguardingwolfpct) {
+						chanmsg(temp.getNickBold() + ", a \u0002guardian angel\u0002, made the unfortunate mistake of " +
+							"guarding a wolf last night, tried to escape, but failed. S/he is found dead.");
+						playerDeath(temp);
+					}
+				}
+			}
+		}
+		// Werecrows' observations return now
+		for (int m = 0; m < getNumWolfTeam(); m++) {
+            temp = getWolfPlayer(m);
+			if(isAlive(temp)) {
+				if(temp.isWerecrow()) {
+					if(temp.observed != null) {
+						if(isAlive(temp.observed)) {
+							// Did the target stay in bed?
+							if((temp.observed.isSeer() && (temp.observed.seen != null)) ||
+								(temp.observed.isHarlot() && (temp.observed.visited != null)) ||
+								(temp.observed.isAngel() && (temp.observed.guarded != null))) {
+								msg(temp.getNick(), temp.observed.getNickBold() + " left his/her bed last night.");
+							} else {
+								msg(temp.getNick(), temp.observed.getNickBold() + " remained in bed all night.");
+							}
+							// Did anyone "visit" the target?
+                            WolfPlayer temp2;
+							for (int n = 0; n < getNumPlayers(); n++) {
+                                temp2 = getPlayer(n);
+								if(isAlive(temp2)) {
+									if(temp2.isAngel()) {
+										if(temp2.guarded == temp.observed)
+											msg(temp.getNick(), temp2.getNickBold() +
+												", a \u0002guardian angel\u0002, guarded " + 
+												temp.observed.getNickBold() + " last night.");
+									} else if(temp2.isSeer()) {
+										if(temp2.seen == temp.observed)
+											msg(temp.getNick(), temp2.getNickBold() +
+												", a \u0002seer\u0002, saw " + 
+												temp.observed.getNickBold() + " last night.");
+									} else if(temp2.isHarlot()) {
+										if(temp2.visited == temp.observed)
+											msg(temp.getNick(), temp2.getNickBold() +
+												", a \u0002harlot\u0002, visited " + 
+												temp.observed.getNickBold() + " last night.");
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		// Reset the players' actions and votes
+		for (int m = 0; m < getNumWolfTeam(); m++) {
+			getWolfPlayer(m).resetActions();
+		}
+        for (int m = 0; m < getNumVillagers(); m++) {
+			getVillager(m).resetActions();
+		}
+        resetVotes();
+        isNight = false;
+		
+        // Check to see if the game ended
+		if(checkForEnding()) return; // no need to go on
+		// Let players know they can now lynch people.
+		chanmsg("The villagers must now decide who to lynch. Use \"" + 
+                wolfBot.cmdchar + "lynch <name>\" to vote for someone.");
+		
+		// Start timing the day
+		timer = new Timer();
+		starttime = System.currentTimeMillis();
+		TimerTask task = new TimerTask() {
+			public void run() {
+				warnDayEnding();
+			}
+		};
+		timer.schedule(task, 600*1000);
+	}
+    
 	/**
 	 * PMs the player his role.
 	 * 
@@ -2287,231 +2490,7 @@ public class WolfGame {
             getPlayer(ctr).voted = null;
         }
     }
-	
-	/**
-	 * Ends the night
-	 */
-	private void endNight() {
-		System.out.println("[CONSOLE] : Ending the night.");
-		timer.cancel();
-		
-		Random rand = new Random();
-		// Posts the time the night took
-		long millis = System.currentTimeMillis() - starttime;
-		int secs = (int)(millis / 1000);
-		int mins = (int)(secs / 60);
-		secs = secs % 60;
-		chanmsg("Night lasted " + formatBold(mins + ":" + (secs < 10 ? "0" + secs : secs)) + ". Dawn breaks! The villagers wake up and look around.");
-		// Make the wolf list
-		String wolflist = "Players: ";
-		String playerlist = "Players: ";
-        WolfPlayer temp;
-		for (int m = 0; m < getNumPlayers(); m++) {
-            temp = getPlayer(m);
-			// Update wolf list
-			if(temp.isWolf()) wolflist += temp.getNickBold() + " (wolf)";
-			else if(temp.isTraitor()) wolflist += temp.getNickBold() + " (traitor)";
-			else if(temp.isWerecrow()) wolflist += temp.getNickBold() + " (werecrow)";
-			else if(temp.isSorcerer()) wolflist += temp.getNickBold() + " (sorcerer)";
-			else wolflist += temp.getNickBold();
-			// Update player list
-			playerlist += temp.getNickBold();
-			if(m < (getNumPlayers() - 2)) {
-				// add a comma
-				wolflist += ", ";
-				playerlist += ", ";
-			} else if(m == (getNumPlayers() - 2)) {
-				// second-to-last player added, add an "and"
-				wolflist += ", and ";
-				playerlist += ", and ";
-			}
-		}
-		// Tally up the votes and announce the kill
-		int[] voteresults = tallyvotes();
-		WolfPlayer voteKill = getPlayer(voteresults[1]);
-		if(voteKill == null) {
-			// LOL
-			chanmsg("The wolves were unable to decide who to kill last night. As a result, all villagers have survived.");
-		} else {
-			// Wolves attack someone
-			// Is the target protected by a guardian angel?
-			boolean successfullyguarded = false;
-			for (int m = 0; m < getNumPlayers(); m++) {
-                temp = getPlayer(m);
-				// Is the player a guardian angel?
-				if(temp.isAngel() && temp.isAlive) {
-					// Did the player guard the victim?
-					if(temp.guarded == voteKill) {
-						// Does the angel die in the attempt?
-						if(rand.nextDouble() < dieguardingvictimpct) {
-							chanmsg(temp.getNickBold() + ", a " + formatBold(temp.getDeathDisplayedRole()) + 
-									", tried to defend the victim, but died in the attempt.");
-							playerDeath(temp);
-						} else if(rand.nextDouble() < guardedvictimdiepct) {
-							// Angel failed in the defense.
-							chanmsg("A guardian angel tried to protect " + voteKill.getNickBold() + 
-								", but s/he was unable to stop the attacks of the wolves and was forced to retreat.");
-						} else {
-							// successful guarding
-							successfullyguarded = true;
-							// Does the angel become a wolf though?
-							if(rand.nextDouble() < infectguardingvictimpct) {
-								msg(temp.getNick(), "While defending the victim, you were slightly injured in the fray. " +
-									"You feel a change coming over you...you have become a \u0002wolf\u0002!");
-								msg(temp.getNick(), wolflist);
-							}
-							// Does the victim turn into a wolf? Obviously, wolfteam won't change.
-							if(voteKill.countWolfRoles() == 0) {
-								if(rand.nextDouble() < guardedvictiminfectpct) {
-									msg(voteKill.getNick(), "Although a guardian angel saved you, you were slightly injured in the fray. " +
-										"You feel a change coming over you...you have become a \u0002wolf\u0002!");
-									msg(voteKill.getNick(), wolflist);
-								}
-							}
-						}
-					}
-				}
-			}
-			if(!successfullyguarded) {
-				// Is the target a harlot who visited someone other than himself?
-				if(voteKill.isHarlot() && (voteKill.visited != null) && (voteKill.visited != voteKill)) {
-					// Harlot visited someone else
-					chanmsg("The wolves' selected victim was a harlot, but she wasn't home.");
-				} else {
-					chanmsg("The dead body of " + voteKill.getNickBold() + ", a " + 
-                            formatBold(voteKill.getDeathDisplayedRole()) + 
-						", is found. Those remaining mourn his/her death.");
-					playerDeath(voteKill);
-					// Wolves might find a gun
-					if(voteKill.isGunner() && (voteKill.numBullets > 0)) {
-						if(rand.nextDouble() < wolffindgunpct) {
-							// randomly pick a wolfteam member to give the gun to
-							int[] wolfidxs = new int[MAX_WOLFPLAYERS];
-							int nWolves = 0;
-							for (int m = 0; m < getNumPlayers(); m++) {
-								if(getPlayer(m).countWolfRoles() > 0) {
-									wolfidxs[nWolves] = m;
-									nWolves++;
-								}
-							}
-							int pickedwolf = wolfidxs[(int)Math.floor(rand.nextDouble()*nWolves)];
-							getPlayer(pickedwolf).roles[WolfPlayer.ROLE_GUNNER] = true;
-							getPlayer(pickedwolf).numBullets = voteKill.numBullets; // give him however many bullets remained
-							// notify him
-							msg(getPlayer(pickedwolf).getNick(), "You find " + voteKill.getNickBold() +
-								"'s gun with " + voteKill.numBullets + " bullets! Use \"" + wolfBot.cmdchar + 
-								"shoot <name>\" to shoot a player. You will deliberately miss other wolves.");
-						}
-					}
-				}
-				// Did any harlots visit the victim?
-				for (int m = 0; m < getNumVillagers(); m++) {
-                    temp = getVillagePlayer(m);
-					if(temp.isHarlot() && temp.isAlive && temp.visited == voteKill) {
-                        // Harlot visited victim and died
-                        chanmsg(temp.getNickBold() + ", a harlot, made the unfortunate mistake of visiting the victim last night " +
-                            "and is now dead.");
-                        playerDeath(temp);
-					}
-				}
-			} else {
-				chanmsg(voteKill.getNickBold() + " was attacked by the wolves last night, but luckily, a " +
-					"guardian angel protected him/her.");
-			}
-		}
-		// Did any harlots visit wolves?
-		for (int m = 0; m < getNumVillagers(); m++) {
-            temp = getVillagePlayer(m);
-			if(temp.isHarlot() && temp.isAlive && (temp.visited != null) && !(temp.visited == temp)) {
-				if((temp.visited.isWolf() || temp.visited.isWerecrow()) &&
-						!(temp.visited == temp.lover)) {
-					// Harlot visited wolf and died
-					chanmsg(temp.getNickBold() + ", a \u0002harlot\u0002, made the unfortunate mistake of " +
-						"visiting a wolf last night and is now dead.");
-					playerDeath(temp);
-				}
-			}
-		}
-		// Did any guardian angels guard wolves?
-		for (int m = 0; m < getNumVillagers(); m++) {
-            temp = getVillagePlayer(m);
-			// Is the player a guardian angel?
-			if(temp.isAngel() && temp.isAlive) {
-				if(temp.guarded.isWolf() || temp.guarded.isWerecrow()) {
-					// Guarded a wolf
-					if(rand.nextDouble() < dieguardingwolfpct) {
-						chanmsg(temp.getNickBold() + ", a \u0002guardian angel\u0002, made the unfortunate mistake of " +
-							"guarding a wolf last night, tried to escape, but failed. S/he is found dead.");
-						playerDeath(temp);
-					}
-				}
-			}
-		}
-		// Werecrows' observations return now
-		for (int m = 0; m < getNumWolfTeam(); m++) {
-            temp = getWolfPlayer(m);
-			if(temp.isAlive) {
-				if(temp.isWerecrow()) {
-					if(temp.observed != null) {
-						if(temp.observed.isAlive) {
-							// Did the target stay in bed?
-							if((temp.observed.isSeer() && (temp.observed.seen != null)) ||
-								(temp.observed.isHarlot() && (temp.observed.visited != null)) ||
-								(temp.observed.isAngel() && (temp.observed.guarded != null))) {
-								msg(temp.getNick(), temp.observed.getNickBold() + " left his/her bed last night.");
-							} else {
-								msg(temp.getNick(), temp.observed.getNickBold() + " remained in bed all night.");
-							}
-							// Did anyone "visit" the target?
-                            WolfPlayer temp2;
-							for (int n = 0; n < getNumPlayers(); n++) {
-                                temp2 = getPlayer(n);
-								if(temp2.isAlive) {
-									if(temp2.isAngel()) {
-										if(temp2.guarded == temp.observed)
-											msg(temp.getNick(), temp2.getNickBold() +
-												", a \u0002guardian angel\u0002, guarded " + 
-												temp.observed.getNickBold() + " last night.");
-									} else if(temp2.isSeer()) {
-										if(temp2.seen == temp.observed)
-											msg(temp.getNick(), temp2.getNickBold() +
-												", a \u0002seer\u0002, saw " + 
-												temp.observed.getNickBold() + " last night.");
-									} else if(temp2.isHarlot()) {
-										if(temp2.visited == temp.observed)
-											msg(temp.getNick(), temp2.getNickBold() +
-												", a \u0002harlot\u0002, visited " + 
-												temp.observed.getNickBold() + " last night.");
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		// Reset the players' actions and votes
-		resetVotes();
-		for (int m = 0; m < getNumPlayers(); m++) {
-			getPlayer(m).resetActions();
-		}
-		// Check to see if the game ended
-		if(checkForEnding()) return; // no need to go on
-		// Let players know they can now lynch people.
-		chanmsg("The villagers must now decide who to lynch. Use \"" + 
-                wolfBot.cmdchar + "lynch <name>\" to vote for someone.");
-		isNight = false;
-		// Start timing the day
-		timer = new Timer();
-		starttime = System.currentTimeMillis();
-		TimerTask task = new TimerTask() {
-			public void run() {
-				warnDayEnding();
-			}
-		};
-		timer.schedule(task, 600*1000);
-	}
-	
+
 	/**
 	 * Ends the day
 	 */
@@ -2537,7 +2516,6 @@ public class WolfGame {
 				temp.resetActions();
 			}
 			// Starts the night
-			isNight = true;
 			startNight();
 		}
 	}
@@ -2613,7 +2591,6 @@ public class WolfGame {
 		// Is the game already in progress?
 		if(isRunning) {
 			msg(nick, "The game is already in progress. Please wait patiently for it to end.");
-			return;
 		}
 		
         // Need a way to retrieve user and host for "who"
@@ -2648,7 +2625,6 @@ public class WolfGame {
 		}
 		// Is the game already in progress?
 		if(isRunning) {
-			p.isAlive = false;
 			// kill him
 			chanmsg(p.getNickBold()+" was thrown out of the village and devoured by wild animals. " +
 				"It appears s/he was a " + formatBold(p.getDeathDisplayedRole()) + ".");
@@ -2704,11 +2680,11 @@ public class WolfGame {
         WolfPlayer temp;
 		for (int m = 0; m < getNumPlayers(); m++) {
             temp = getPlayer(m);
-			if(isRunning && temp.isAlive) {
-				devoicelist = devoicelist + temp.getNick() + " ";
+			if(isRunning && isAlive(temp)) {
+				devoicelist += temp.getNick() + " ";
 				count++;
 			} else if(!isRunning) {
-				devoicelist = devoicelist + temp.getNick() + " ";
+				devoicelist += temp.getNick() + " ";
 				count++;
 			}
 			// send at 4
@@ -2720,12 +2696,12 @@ public class WolfGame {
 			}
 			// If in wolf channel, kick him out.
 			if(wolfChannel != null) {
-				if((temp.countWolfRoles() > 0) && temp.isAlive) {
+				if((temp.countWolfRoles() > 0) && isAlive(temp)) {
 					kickplayer(wolfChannel, temp.getNick(), "Game ended");
 				}
 			}
 			if(tavernChannel != null) {
-				if((temp.countWolfRoles() > 0) && temp.isAlive && temp.isInTavern) {
+				if((temp.countWolfRoles() > 0) && isAlive(temp) && temp.isInTavern) {
 					kickplayer(tavernChannel, temp.getNick(), "Game ended");
 				}
 			}
@@ -2768,12 +2744,10 @@ public class WolfGame {
 		}
 		if(tavernChannel != null && p.isInTavern) {
             kickplayer(tavernChannel, p.getNick(), "You have died");
-		}
-		// Now dead
-		p.isAlive = false;
-        
+		}       
 		// update votes
-        p.voted.votes--;
+        if (p.voted != null)
+            p.voted.votes--;
         for (int ctr = 0; ctr < getNumPlayers(); ctr++){
             temp = getPlayer(ctr);
             if (temp.voted == p)
@@ -2789,7 +2763,7 @@ public class WolfGame {
 		// Kills the lover
 		if(p.lover != null) {
 			// Prevent recursively calling <playerDeath>
-			if(p.lover.isAlive) {
+			if(isAlive(p.lover)) {
 				chanmsg(p.lover.getNickBold() + ", a " + p.lover.getDeathDisplayedRole() +
 					" was " + p.getNickBold() + "'s lover and is dying of a broken heart!");
 				// return whether the game ends following the lover's death (preventing multiple endings)
@@ -2827,7 +2801,7 @@ public class WolfGame {
 		if(p != null) {
 			if(isRunning) {
 				// Game is running, kill the player
-				if(p.isAlive) {
+				if(isAlive(p)) {
 					chanmsg(p.getNickBold() +
                             " died of an unknown disease. It appears s/he was a " +
 						formatBold(p.getDeathDisplayedRole()) + ".");
@@ -2851,7 +2825,7 @@ public class WolfGame {
 		WolfPlayer p = getPlayer(nick);
 		if(p != null) {
 			if(isRunning) {
-				if(p.isAlive) {
+				if(isAlive(p)) {
 					// Game is running, kill the player
 					chanmsg(p.getNickBold() + " was kicked off a cliff. It appears s/he was a " +
 						formatBold(p.getDeathDisplayedRole()) + ".");
@@ -2890,18 +2864,10 @@ public class WolfGame {
 	 * @param host
 	 * @return
 	 */
-	private boolean addPlayer(String nick, String user, String host) {
-		// Does this guy already exist?
-		if(getPlayer(nick, user, host) != null) 
-            return false;
-		// only add the player if enough slots
-		if(getNumPlayers() < MAX_WOLFPLAYERS) {
-			players.add(new WolfPlayer(nick, user, host, System.currentTimeMillis()));
-			return true;
-		}
-		// couldn't add
-        chanmsg("Maximum number of players has been reached.");
-		return false;
+	private void addPlayer(String nick, String user, String host) {
+		players.add(new WolfPlayer(nick, user, host, System.currentTimeMillis()));
+        chanmsg(formatBold(nick) + " has joined the game.");
+        voice(nick);
 	}
 	
 	/**
@@ -2947,7 +2913,7 @@ public class WolfGame {
 		if (p == null) 
             return; // no such user
 		// Don't let dead people chat
-		if (!p.isAlive) 
+		if (!isAlive(p)) 
             return;
 		// Is it a wolf team or tavern message?
 		boolean isWolf = p.countWolfRoles() > 0;
@@ -2978,7 +2944,7 @@ public class WolfGame {
 		if(wolfChannel != null) return;
 		for (int m = 0; m < getNumPlayers(); m++) {
             temp = getPlayer(m);
-			if(temp.isAlive) {
+			if(isAlive(temp)) {
 				if(temp.countWolfRoles() > 0) msg(temp.getNick(), msg);
 			}
 		}
@@ -2995,7 +2961,7 @@ public class WolfGame {
 		if (tavernChannel != null) return;
 		for (int m = 0; m < getNumPlayers(); m++) {
             temp = getPlayer(m);
-			if(temp.isInTavern && temp.isAlive) msg(temp.getNick(), msg);
+			if(temp.isInTavern && isAlive(temp)) msg(temp.getNick(), msg);
 		}
 	}
 	

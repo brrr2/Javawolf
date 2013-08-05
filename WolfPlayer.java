@@ -82,8 +82,6 @@ public class WolfPlayer {
 	// Who he loves
 	public WolfPlayer lover = null;
 	
-	// Is he even alive?
-	public boolean isAlive = false;
 	// Can he vote?
 	public boolean canVote = true;
 	
