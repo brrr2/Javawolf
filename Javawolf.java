@@ -58,13 +58,15 @@ public class Javawolf extends PircBot {
 	/**
 	 * Creates an instance of Javawolf
 	 * 
-	 * @param configFile file path of config file
+	 * @param configFile file path of configuration file
 	 */
 	public Javawolf(String configFile) {
 		setMessageDelay(200);
         trustedHosts = new ArrayList<String>();
 		ignoredHosts = new ArrayList<String>();
 		cmdBans = new ArrayList<String>();
+        wolfChannel = null;
+        tavernChannel = null;
         String line, variable=null, value=null;
 		BufferedReader cfg = null;
         
@@ -130,6 +132,8 @@ public class Javawolf extends PircBot {
         
         setName(nick);
         setLogin(username);
+        setVersion("JavaWolf v0.2 with PircBot");
+        setVerbose(false);
 	}
 
 	/**
@@ -148,8 +152,6 @@ public class Javawolf extends PircBot {
                 wolfbot.connect(wolfbot.server, wolfbot.port);
                 connected = true;
                 
-                // Log in once connected
-                //this.sendRawLine("USER " + username + " 8 * :" + "Java Wolf Bot v0.2");
                 wolfbot.sendMessage("NickServ", wolfbot.login_str);
                 System.out.println("[CONSOLE] : Launching game....");
                 break;
@@ -158,8 +160,8 @@ public class Javawolf extends PircBot {
                 wolfbot.nick += "_";
                 wolfbot.setName(wolfbot.nick);
             }    
-            catch(IrcException e) { System.err.println("[CONSOLE] : Caught IrcException...."); } 
-            catch(IOException e) { System.err.println("[CONSOLE] : Caught IOException....");  }
+            catch(IrcException e) { System.err.println("[CONSOLE] : "+e.getMessage()); } 
+            catch(IOException e) { System.err.println("[CONSOLE] : "+e.getMessage());  }
 
             // Wait 1 second if connection fails
             try { Thread.sleep(1000); } catch(InterruptedException e) {}
@@ -184,14 +186,14 @@ public class Javawolf extends PircBot {
 	@Override
 	protected void onJoin(String channel, String sender, String login, String hostname) {
 		// Only generate game when bot joins the main channel.
-		if(sender.equals(this.getNick())) {
-			if(this.channel.equals(channel)) {
+		if(sender.equals(getNick())) {
+			if(channel.equals(channel)) {
 				// Joined the main channel.
-				if(useWelcomeMsg) this.sendMessage(channel, "Welcome to javawolf! use " + cmdchar + "join to begin a game.");
+				if(useWelcomeMsg) sendMessage(channel, "Welcome to javawolf! use " + cmdchar + "join to begin a game.");
 				// create the game
 				logEvent("Welcome sent. Generating game....", LOG_CONSOLE, null);
                 game = new WolfGame(channel, wolfChannel, tavernChannel, defaultPConfig, this);
-			} else if(this.wolfChannel.equals(channel)) {
+			} else if(wolfChannel.equals(channel)) {
 				// Joined the wolf channel.
 			}
 		}
@@ -199,29 +201,29 @@ public class Javawolf extends PircBot {
 	
 	@Override
 	protected void onUserList(String channel, User[] users) {
-		if(this.wolfChannel.contentEquals(channel)) {
+		if(wolfChannel != null && wolfChannel.equals(channel)) {
 			// Joined the wolf channel.
 			// Kick everybody who isn't ourself or ChanServ.
-			String nick = null;
+			String tNick;
 			for (int m = 0; m < users.length; m++) {
 				// Retrieve his nick.
-				nick = users[m].getNick();
-				if(nick.contentEquals("ChanServ") || nick.contentEquals(this.getNick()))
+				tNick = users[m].getNick();
+				if(tNick.equals("ChanServ") || tNick.equals(getNick()))
                     continue; // Don't kick ChanServ, don't kick ourself
-				this.kick(wolfChannel, nick, "Clearing wolf channel");
+				kick(wolfChannel, tNick, "Clearing wolf channel");
 				//this.sendRawLineViaQueue("KICK " + wolfChannel + " " + nick + " :Clearing wolf channel.");
 				// next guy
 			}
-		} else if(this.tavernChannel.contentEquals(channel)) {
+		} else if(tavernChannel != null && tavernChannel.equals(channel)) {
 			// Joined the wolf channel.
 			// Kick everybody who isn't ourself or ChanServ.
-			String nick = null;
+			String tNick;
 			for (int m = 0; m < users.length; m++) {
 				// Retrieve his nick.
-				nick = users[m].getNick();
-				if(nick.contentEquals("ChanServ") || nick.contentEquals(this.getNick()))
+				tNick = users[m].getNick();
+				if(tNick.equals("ChanServ") || tNick.equals(getNick()))
                     continue; // Don't kick ChanServ, don't kick ourself
-				this.kick(tavernChannel, nick, "Clearing tavern channel");
+				kick(tavernChannel, tNick, "Clearing tavern channel");
 				//this.sendRawLineViaQueue("KICK " + wolfChannel + " " + nick + " :Clearing wolf channel.");
 				// next guy
 			}
@@ -257,15 +259,15 @@ public class Javawolf extends PircBot {
 			if(notice.contains("You are now identified")) {
 				// authenticated with NickServ; join
 				System.out.println("[CONSOLE] : Joining " + channel);
-				this.joinChannel(channel);
-				this.sendMessage("ChanServ", "OP " + channel + " " + this.getNick());
+				joinChannel(channel);
+				sendMessage("ChanServ", "OP " + channel + " " + getNick());
 				if(wolfChannel != null) {
-					this.joinChannel(wolfChannel);
-					this.sendMessage("ChanServ", "OP " + wolfChannel + " " + this.getNick());
+					joinChannel(wolfChannel);
+					sendMessage("ChanServ", "OP " + wolfChannel + " " + getNick());
 				}
 				if(tavernChannel != null) {
-					this.joinChannel(tavernChannel);
-					this.sendMessage("ChanServ", "OP " + tavernChannel + " " + this.getNick());
+					joinChannel(tavernChannel);
+					sendMessage("ChanServ", "OP " + tavernChannel + " " + getNick());
 				}
 			}
         } else if (sourceNick.contains("freenode.net")){ 

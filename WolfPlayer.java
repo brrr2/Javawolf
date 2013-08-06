@@ -164,35 +164,74 @@ public class WolfPlayer {
     public boolean isWolf(){
         return roles[ROLE_WOLF];
     }
+    public void setWolf(boolean b){
+        roles[ROLE_WOLF] = b;
+    }
     public boolean isWerecrow(){
         return roles[ROLE_WERECROW];
+    }
+    public void setWerecrow(boolean b){
+        roles[ROLE_WERECROW] = b;
     }
     public boolean isTraitor(){
         return roles[ROLE_TRAITOR];
     }
+    public void setTraitor(boolean b){
+        roles[ROLE_TRAITOR] = b;
+    }
     public boolean isSorcerer(){
         return roles[ROLE_SORCERER];
+    }
+    public void setSorcerer(boolean b){
+        roles[ROLE_SORCERER] = b;
     }
     public boolean isSeer(){
         return roles[ROLE_SEER];
     }
+    public void setSeer(boolean b){
+        roles[ROLE_SEER] = b;
+    }
     public boolean isHarlot(){
         return roles[ROLE_HARLOT];
+    }
+    public void setHarlot(boolean b){
+        roles[ROLE_HARLOT] = b;
     }
     public boolean isAngel(){
         return roles[ROLE_ANGEL];
     }
+    public void setAngel(boolean b){
+        roles[ROLE_ANGEL] = b;
+    }
     public boolean isDetective(){
         return roles[ROLE_DETECTIVE];
+    }
+    public void setDetective(boolean b){
+        roles[ROLE_DETECTIVE] = b;
     }
     public boolean isDrunk(){
         return roles[ROLE_DRUNK];
     }
+    public void setDrunk(boolean b){
+        roles[ROLE_DRUNK] = b;
+    }
     public boolean isGunner(){
         return roles[ROLE_GUNNER];
     }
+    public void setGunner(boolean b){
+        roles[ROLE_GUNNER] = b;
+    }
     public boolean isMedium(){
         return roles[ROLE_MEDIUM];
+    }
+    public void setMedium(boolean b){
+        roles[ROLE_MEDIUM] = b;
+    }
+    public boolean isCursed(){
+        return roles[ROLE_CURSED];
+    }
+    public void setCursed(boolean b){
+        roles[ROLE_CURSED] = b;
     }
 
 	/**
