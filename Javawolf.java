@@ -14,9 +14,8 @@ import java.util.StringTokenizer;
 import org.jibble.pircbot.IrcException;
 import org.jibble.pircbot.NickAlreadyInUseException;
 import org.jibble.pircbot.PircBot;
+import org.jibble.pircbot.ReplyConstants;
 import org.jibble.pircbot.User;
-//import org.jibble.*;
-
 
 /**
  * @author Reaper Eternal
@@ -31,29 +30,32 @@ public class Javawolf extends PircBot {
 	private String channel;
 	private String wolfChannel;
 	private String tavernChannel;
-    private String login_str;
+    private String password;
 	
 	// Command character
-	public String cmdchar = ".";
+	public String cmdchar;
 	// Trusted players
-	public List<String> trustedHosts = null;
+	public List<String> trustedHosts;
 	// Ignored players
-	public List<String> ignoredHosts = null;
+	public List<String> ignoredHosts;
 	// Ignored players
-	public List<String> cmdBans = null;
+	public List<String> cmdBans;
 	// Our game
-	private WolfGame game = null;
-	// Whether to use the welcome message
-	private boolean useWelcomeMsg = true;
-	// What player config to load as default
-	private String defaultPConfig = "sample.cfg";
-	
-	// logging
-	private static final int LOG_CONSOLE = 0;
-	//private static final int LOG_PRIVMSG = 1;
-	//private static final int LOG_PUBMSG  = 2;
-	//private static final int LOG_NOTICE  = 3;
-	private static final int LOG_GAME    = 4;
+	private WolfGame game;
+    // Whether or not to show welcome message
+	private boolean useWelcomeMsg;
+    // Default player configuration
+	private String defaultPConfig;
+    // Storage of the server reply from raw WHO command
+	public String whoReply;
+    
+	// Static logging codes
+    public static final int LOG_ERROR = -1;
+	public static final int LOG_CONSOLE = 0;
+	public static final int LOG_PRIVMSG = 1;
+	public static final int LOG_PUBMSG  = 2;
+	public static final int LOG_NOTICE  = 3;
+	public static final int LOG_GAME    = 4;
 	
 	/**
 	 * Creates an instance of Javawolf
@@ -61,10 +63,16 @@ public class Javawolf extends PircBot {
 	 * @param configFile file path of configuration file
 	 */
 	public Javawolf(String configFile) {
-		setMessageDelay(200);
+		// Initialization and setting defaults
+        cmdchar = "!";
+        setMessageDelay(200);
         trustedHosts = new ArrayList<String>();
 		ignoredHosts = new ArrayList<String>();
 		cmdBans = new ArrayList<String>();
+        game = null;
+        useWelcomeMsg = true;
+        // load default player config
+        defaultPConfig = "sample.cfg";
         wolfChannel = null;
         tavernChannel = null;
         String line, variable=null, value=null;
@@ -87,7 +95,7 @@ public class Javawolf extends PircBot {
 					} else if(variable.equals("username")) {// username
 						username = value;
 					} else if(variable.equals("login")) {   // string to PM to NickServ to identify
-						login_str = value;
+						password = value;
 					} else if(variable.equals("server")) {  // server
 						server = value;
 					} else if(variable.equals("port")) {    // port
@@ -148,29 +156,38 @@ public class Javawolf extends PircBot {
         boolean connected = false;
         for (int ctr = 0; ctr < 3; ctr++){
             try {
-                System.out.println("[CONSOLE] : Connecting to " + wolfbot.server + ":" + wolfbot.port);
+                wolfbot.logEvent("Connecting to " + wolfbot.server + ":" + wolfbot.port, LOG_CONSOLE, null);
                 wolfbot.connect(wolfbot.server, wolfbot.port);
                 connected = true;
-                
-                wolfbot.sendMessage("NickServ", wolfbot.login_str);
-                System.out.println("[CONSOLE] : Launching game....");
                 break;
             } catch(NickAlreadyInUseException e) { 
-                System.out.println("[CONSOLE] : " + wolfbot.nick + " is in use. Trying " + wolfbot.nick + "_");
+                wolfbot.logEvent(wolfbot.nick + " is in use. Trying " + wolfbot.nick + "_", LOG_CONSOLE, null);
                 wolfbot.nick += "_";
                 wolfbot.setName(wolfbot.nick);
             }    
-            catch(IrcException e) { System.err.println("[CONSOLE] : "+e.getMessage()); } 
-            catch(IOException e) { System.err.println("[CONSOLE] : "+e.getMessage());  }
+            catch(IrcException e) { wolfbot.logEvent(e.getMessage(), LOG_ERROR, null); } 
+            catch(IOException e) { wolfbot.logEvent(e.getMessage(), LOG_ERROR, null);  }
 
             // Wait 1 second if connection fails
             try { Thread.sleep(1000); } catch(InterruptedException e) {}
         }
         if (!connected){
-            System.err.println("[CONSOLE] :  Unable to connect to server.");
+            wolfbot.logEvent("Unable to connect to server.", LOG_ERROR, null);
         }
 	}
-	
+    
+    @Override
+    protected void onServerResponse(int code, String response){
+        if (code == ReplyConstants.RPL_WHOREPLY){
+            whoReply = response;
+        }
+    }
+    
+    @Override
+    protected void onConnect(){
+        identify(password);
+    }
+    
 	@Override
 	protected void onPrivateMessage(String sender, String login, String hostname, String message) {
 		if(ignoredHosts.contains(hostname)) return;
@@ -189,10 +206,12 @@ public class Javawolf extends PircBot {
 		if(sender.equals(getNick())) {
 			if(channel.equals(channel)) {
 				// Joined the main channel.
+                logEvent("Launching game....", LOG_CONSOLE, null);
 				if(useWelcomeMsg) sendMessage(channel, "Welcome to javawolf! use " + cmdchar + "join to begin a game.");
 				// create the game
 				logEvent("Welcome sent. Generating game....", LOG_CONSOLE, null);
                 game = new WolfGame(channel, wolfChannel, tavernChannel, defaultPConfig, this);
+                logEvent("Ready.", LOG_CONSOLE, null);
 			} else if(wolfChannel.equals(channel)) {
 				// Joined the wolf channel.
 			}
@@ -250,8 +269,8 @@ public class Javawolf extends PircBot {
 		}
 		// Reset idlers
 		if(game != null) game.resetIdle(sender, login, hostname);
-	}
-	
+    }
+    
 	@Override
 	protected void onNotice(String sourceNick, String sourceLogin, String sourceHostname, String target, String notice) {
 		if(ignoredHosts.contains(sourceHostname)) return;
@@ -298,11 +317,11 @@ public class Javawolf extends PircBot {
 	private void cmdToGame(String cmd, String[] args, String nick, String user, String host) {
 		// Is the command banned?
 		if(cmdBans.contains(cmd.toLowerCase())) {
-			this.sendMessage(nick, "The command \"" + cmdchar + cmd + "\" has been banned from use.");
+			sendMessage(nick, "The command \"" + cmdchar + cmd + "\" has been banned from use.");
 			return;
 		}
-		// Sends the command to the game.
-		game.parseCommand(cmd, args, nick, user, host);
+		// Sends the lowercase command to the game.
+		game.parseCommand(cmd.toLowerCase(), args, nick, user, host);
 	}
 	
 	@Override
@@ -335,11 +354,6 @@ public class Javawolf extends PircBot {
 		}
 	}
 	
-	@Override
-	protected void onVersion(String sourceNick, String sourceLogin, String sourceHostname, String target) {
-		// Ignore version requests
-	}
-	
 	/**
 	 * Logs events
 	 * @param event
@@ -350,6 +364,8 @@ public class Javawolf extends PircBot {
 		if(type == LOG_CONSOLE) {
 			// console events
 			System.out.println("[CONSOLE] : " + event);
+        } else if (type == LOG_ERROR) {
+            System.err.println("[CONSOLE] : ERROR : " + event);
 		} else if(type == LOG_GAME) {
 			// game events
 			System.out.println("### " + who + " ### has " + event + ". ###");

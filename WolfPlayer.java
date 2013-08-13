@@ -41,28 +41,13 @@ public class WolfPlayer {
 	public static final int ROLE_WOLF_HIGHBOUND = 11;
 	// role names
 	public static Role[] sz_roles = null;
-	// villager roles
-	/*public boolean isSeer = false;
-	public boolean isHarlot = false;
-	public boolean isDrunk = false;
-	public boolean isAngel = false;
-	public boolean isDetective = false;
-	public boolean isMedium = false;
-	// secondary roles
-	public boolean isGunner = false;
-	public boolean isCursed = false;
-	// evil roles >:)
-	public boolean isWolf = false;
-	public boolean isTraitor = false;
-	public boolean isWerecrow = false;
-	public boolean isSorcerer = false;*/
 	// Number of bullets left
 	public int numBullets = 0;
     public int votes = 0;
 	// in tavern?
 	public boolean isInTavern = false;
 	
-	// --- Indices into <WolfGame.java>'s <players> array ---
+	// --- References to players in <WolfGame.java>'s <players> ArrayList ---
 	// Who he has voted for / killed
 	public WolfPlayer voted = null;
 	// Who he has seen
@@ -161,6 +146,7 @@ public class WolfPlayer {
 	}
 	
     // Role accessor methods
+    // evil roles >:)
     public boolean isWolf(){
         return roles[ROLE_WOLF];
     }
@@ -185,6 +171,7 @@ public class WolfPlayer {
     public void setSorcerer(boolean b){
         roles[ROLE_SORCERER] = b;
     }
+    // villager roles
     public boolean isSeer(){
         return roles[ROLE_SEER];
     }
@@ -215,25 +202,26 @@ public class WolfPlayer {
     public void setDrunk(boolean b){
         roles[ROLE_DRUNK] = b;
     }
-    public boolean isGunner(){
-        return roles[ROLE_GUNNER];
-    }
-    public void setGunner(boolean b){
-        roles[ROLE_GUNNER] = b;
-    }
     public boolean isMedium(){
         return roles[ROLE_MEDIUM];
     }
     public void setMedium(boolean b){
         roles[ROLE_MEDIUM] = b;
     }
+    // secondary roles
     public boolean isCursed(){
         return roles[ROLE_CURSED];
     }
     public void setCursed(boolean b){
         roles[ROLE_CURSED] = b;
     }
-
+    public boolean isGunner(){
+        return roles[ROLE_GUNNER];
+    }
+    public void setGunner(boolean b){
+        roles[ROLE_GUNNER] = b;
+    }
+    
 	/**
 	 * Used to show all the roles on death.
 	 * 
@@ -320,10 +308,10 @@ public class WolfPlayer {
 	 * @return
 	 */
 	private String parseEnumeratedRoles(String[] roleList, int count) {
-		if(count == 0) return Colors.BOLD+"villager"+Colors.BOLD;
+		if(count == 0) return WolfGame.formatBold("villager");
 		String str = "";
 		for (int m = 0; m < count; m++) {
-			str = str + Colors.BOLD + roleList[m] + Colors.BOLD;
+			str += WolfGame.formatBold(roleList[m]);
 			if(m == count - 2) {
 				str = str + ", and ";
 			} else if(m < count - 2) {
