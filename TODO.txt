@@ -20,6 +20,7 @@ Enhancements:
   - Implement "exotic mode", where roles chosen are random
   + Add ability to set variables
   - Implement !simple command
+  - Implement !help command
 
 Bugs:
   + Sometimes not all users are devoiced when game ends
