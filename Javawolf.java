@@ -50,12 +50,12 @@ public class Javawolf extends PircBot {
 	public String whoReply;
     
 	// Static logging codes
-    public static final int LOG_ERROR = -1;
-	public static final int LOG_CONSOLE = 0;
-	public static final int LOG_PRIVMSG = 1;
-	public static final int LOG_PUBMSG  = 2;
-	public static final int LOG_NOTICE  = 3;
-	public static final int LOG_GAME    = 4;
+    public static final int LOG_STARTUP = 0;
+	public static final int LOG_CONSOLE = 1;
+	public static final int LOG_CONNECT = 2;
+	public static final int LOG_PLAYERCONFIG = 3;
+	public static final int LOG_ADMIN = 4;
+	public static final int LOG_GAME = 5;
 	
 	/**
 	 * Creates an instance of Javawolf
@@ -102,7 +102,7 @@ public class Javawolf extends PircBot {
 						try {
 							port = Integer.parseInt(value);
 						} catch(NumberFormatException e) {
-							System.err.println("[STARTUP] : Could not parse port: \"" + value + "\"!");
+                            this.logEvent("Could not parse port: \"" + value + "\"!", LOG_STARTUP, true);
 							System.exit(1);
 						}
 					} else if(variable.equals("channel")) { // channel
@@ -120,11 +120,11 @@ public class Javawolf extends PircBot {
 					} else if(variable.compareTo("welcome") == 0) { // welcome on join?
 						useWelcomeMsg = Boolean.parseBoolean(value);
 					} else if(variable.compareTo("playerconfig") == 0) {    // default player config
-						System.out.println("[STARTUP] : Set configuration file to \"" + value + "\".");
+                        this.logEvent("Set configuration file to \"" + value + "\".", LOG_STARTUP, false);
 						defaultPConfig = value;
 					} else {
 						// unknown variable
-						System.out.println("[STARTUP] : Unknown variable \"" + variable + "\".");
+                        this.logEvent("Unknown variable \"" + variable + "\".", LOG_STARTUP, false);
 					}
                 }
                 
@@ -156,23 +156,27 @@ public class Javawolf extends PircBot {
         boolean connected = false;
         for (int ctr = 0; ctr < 3; ctr++){
             try {
-                wolfbot.logEvent("Connecting to " + wolfbot.server + ":" + wolfbot.port, LOG_CONSOLE, null);
+                wolfbot.logEvent("Connecting to " + wolfbot.server + ":" + wolfbot.port, LOG_CONSOLE, false);
                 wolfbot.connect(wolfbot.server, wolfbot.port);
                 connected = true;
                 break;
             } catch(NickAlreadyInUseException e) { 
-                wolfbot.logEvent(wolfbot.nick + " is in use. Trying " + wolfbot.nick + "_", LOG_CONSOLE, null);
+                wolfbot.logEvent(wolfbot.nick + " is in use. Trying " + wolfbot.nick + "_", LOG_CONSOLE, false);
                 wolfbot.nick += "_";
                 wolfbot.setName(wolfbot.nick);
             }    
-            catch(IrcException e) { wolfbot.logEvent(e.getMessage(), LOG_ERROR, null); } 
-            catch(IOException e) { wolfbot.logEvent(e.getMessage(), LOG_ERROR, null);  }
+            catch(IrcException e) { 
+                wolfbot.logEvent(e.getMessage(), LOG_CONNECT, true);
+            } 
+            catch(IOException e) { 
+                wolfbot.logEvent(e.getMessage(), LOG_CONNECT, true);
+            }
 
             // Wait 1 second if connection fails
             try { Thread.sleep(1000); } catch(InterruptedException e) {}
         }
         if (!connected){
-            wolfbot.logEvent("Unable to connect to server.", LOG_ERROR, null);
+            wolfbot.logEvent("Unable to connect to server.", LOG_CONNECT, true);
         }
 	}
     
@@ -206,12 +210,12 @@ public class Javawolf extends PircBot {
 		if(sender.equals(getNick())) {
 			if(channel.equals(channel)) {
 				// Joined the main channel.
-                logEvent("Launching game....", LOG_CONSOLE, null);
+                logEvent("Launching game....", LOG_CONSOLE, false);
 				if(useWelcomeMsg) sendMessage(channel, "Welcome to javawolf! use " + cmdchar + "join to begin a game.");
 				// create the game
-				logEvent("Welcome sent. Generating game....", LOG_CONSOLE, null);
+				logEvent("Welcome sent. Generating game....", LOG_CONSOLE, false);
                 game = new WolfGame(channel, wolfChannel, tavernChannel, defaultPConfig, this);
-                logEvent("Ready.", LOG_CONSOLE, null);
+                logEvent("Ready.", LOG_CONSOLE, false);
 			} else if(wolfChannel.equals(channel)) {
 				// Joined the wolf channel.
 			}
@@ -277,7 +281,7 @@ public class Javawolf extends PircBot {
 		if(sourceNick.contains("NickServ")) {
 			if(notice.contains("You are now identified")) {
 				// authenticated with NickServ; join
-				System.out.println("[CONSOLE] : Joining " + channel);
+				this.logEvent("Joining " + channel, LOG_CONSOLE, false);
 				joinChannel(channel);
 				sendMessage("ChanServ", "OP " + channel + " " + getNick());
 				if(wolfChannel != null) {
@@ -290,7 +294,7 @@ public class Javawolf extends PircBot {
 				}
 			}
         } else if (sourceNick.contains("freenode.net")){ 
-            System.out.println("[CONSOLE] : \"" + notice + "\" sent by " + sourceNick + "." );
+            this.logEvent("\"" + notice + "\" sent by " + sourceNick + ".", LOG_CONSOLE, false);
 		} else if(game != null) {
 			String message = notice.trim();
 			String[] args = message.split(" ");
@@ -360,16 +364,35 @@ public class Javawolf extends PircBot {
 	 * @param type
 	 * @param who
 	 */
-	public void logEvent(String event, int type, String who) {
-		if(type == LOG_CONSOLE) {
-			// console events
-			System.out.println("[CONSOLE] : " + event);
-        } else if (type == LOG_ERROR) {
-            System.err.println("[CONSOLE] : ERROR : " + event);
-		} else if(type == LOG_GAME) {
-			// game events
-			System.out.println("### " + who + " ### has " + event + ". ###");
-		}
+	public void logEvent(String event, int type, boolean error) {
+        String logStr = "";
+        // Set the log type
+        switch (type) {
+            case LOG_STARTUP:
+                logStr += "[STARTUP] : ";
+                break;
+            case LOG_CONSOLE:
+                logStr += "[CONSOLE] : ";
+                break;
+            case LOG_CONNECT:
+                logStr += "[CONNECT] : ";
+                break;
+            case LOG_PLAYERCONFIG:
+                logStr += "[PLAYERCONFIG] : ";
+                break;
+            case LOG_ADMIN:
+                logStr += "[ADMIN] : ";
+                break;
+            case LOG_GAME:
+                logStr += "[GAME] : ";
+                break;
+        }
+        
+        // Output error or normal message to console
+        if (error)
+            System.err.println(logStr + event);
+        else
+            System.out.println(logStr + event);
 	}
 }
 

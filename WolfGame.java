@@ -239,11 +239,11 @@ public class WolfGame {
 		int nNewCfgs = 0;
 		boolean isSettingRoles = false;
 		// Load file.
-		System.out.println("[PLAYERCONFIG] : Loading \"" + filepath + ".cfg\"....");
+        wolfBot.logEvent("Loading \"" + filepath + ".cfg\"....", Javawolf.LOG_PLAYERCONFIG, false);
 		try {
 			cfg = new BufferedReader(new FileReader(filepath + ".cfg"));
 		} catch(FileNotFoundException e) {
-			System.err.println("[PLAYERCONFIG] : Could not find file \"" + filepath + "\"!");
+			wolfBot.logEvent("Could not find file \"" + filepath + "\"!", Javawolf.LOG_PLAYERCONFIG, true);
 			return false;
 		}
 		
@@ -259,7 +259,7 @@ public class WolfGame {
 					variable = line.substring(0, charLoc).trim().toLowerCase();
 					value = line.substring(charLoc+1).trim();
 					if(!isSettingRoles) {
-						if(variable.compareTo("playerconfig") == 0) {
+						if(variable.equals("playerconfig")) {
 							// starts a new player role configuration
 							wc = new WolfConfig();
 							isSettingRoles = true;
@@ -294,7 +294,7 @@ public class WolfGame {
 					} else {
 						// set player configuration-specific variables
 						// ------- VILLAGE PRIMARY ROLES -------
-						if(variable.compareTo("seer") == 0) {
+						if(variable.equals("seer")) {
 							// seer count
 							try {
 								wc.seercount = Integer.parseInt(value);
@@ -517,7 +517,13 @@ public class WolfGame {
 		} else if(cmd.equals("myrole")) {
 			// PMs you your role
 			myrole(nick, user, host);
-		} else if(cmd.equals("fstart")) {
+        } else if (cmd.equals("roles")){
+            
+        } else if (cmd.equals("simple")){
+            
+        } else if (cmd.equals("ping")){
+            
+        } else if(cmd.equals("fstart")) {
 			// Mod command: Forces the game to start.
 			if(admincheck(host)) {
 				startgame(nick, user, host, true);
@@ -652,7 +658,7 @@ public class WolfGame {
 			try {
 				gunnermisspct = Double.parseDouble(val);
 			} catch(NumberFormatException e) {
-				System.err.println("[CONSOLE] : Could not parse \"" + val + "\"!");
+                wolfBot.logEvent("Could not parse \"" + val + "\"!", Javawolf.LOG_ADMIN, true);
 			}
 		}
 	}
@@ -696,12 +702,12 @@ public class WolfGame {
 	 */
 	private void myrole(String nick, String user, String host) {
 		// Logs the command
-        wolfBot.logEvent(nick + " issued the MYROLE command", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the MYROLE command", Javawolf.LOG_GAME, false);
 		
 		WolfPlayer p = getPlayer(nick, user, host);
         // Is game running?
-        if (isRunning) {
-			notice(nick, "The game is already running.");
+        if (!isRunning) {
+			notice(nick, "The game is not running.");
         // Is the player even playing?
         } else if (p == null) {
 			msg(nick, "You aren't even playing.");
@@ -722,7 +728,7 @@ public class WolfGame {
 	 */
 	private void stats(String nick, String user, String host) {
 		// Logs the command
-        wolfBot.logEvent(nick + " issued the STATS command", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the STATS command", Javawolf.LOG_GAME, false);
 		
 		// Is the game even running? If not, just give player count and return.
 		if(!isRunning) {
@@ -815,21 +821,19 @@ public class WolfGame {
     
 	private void votes(String nick, String user, String host){
         // Logs the command
-        wolfBot.logEvent(nick + " issued the VOTES command", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the VOTES command", Javawolf.LOG_GAME, false);
 		
-		// Is the game even running? If not, just give player count and return.
+        WolfPlayer p = getPlayer(nick, user, host);
+		// Is the game even running?
 		if(!isRunning) {
 			notice(nick, "No game is currently running.");
-			return;
-		}
-		
         // Is the player even playing?
-		WolfPlayer p = getPlayer(nick, user, host);
-		if(p == null) {
+        } else if(p == null) {
 			notice(nick, "You aren't even playing.");
 		// Is the player alive?
         } else if(!isAlive(p)) {
 			notice(nick, "You have died already and thus cannot use the votes command.");
+        // Is it night
         } else if(isNight){
             notice(nick, "It is currently night.");
 		// List all the players.
@@ -925,7 +929,7 @@ public class WolfGame {
 	 */
 	private void curse(String who, String nick, String user, String host) {
 		// Logs the command
-        wolfBot.logEvent(nick + " issued the CURSE command", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the CURSE command", Javawolf.LOG_GAME, false);
 		
 		// Get player and target
 		WolfPlayer p = getPlayer(nick, user, host);
@@ -987,7 +991,7 @@ public class WolfGame {
 	 */
 	private void raise(String who, String nick, String user, String host) {
         // Logs the command
-        wolfBot.logEvent(nick + " issued the RAISE command", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the RAISE command", Javawolf.LOG_GAME, false);
         
 		// Get player and target
 		WolfPlayer p = getPlayer(nick, user, host);
@@ -1039,7 +1043,7 @@ public class WolfGame {
 	 */
 	private void guard(String who, String nick, String user, String host) {
 		// Logs the command
-        wolfBot.logEvent(nick + " issued the GUARD command", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the GUARD command", Javawolf.LOG_GAME, false);
 
 		WolfPlayer p = getPlayer(nick, user, host);
         WolfPlayer target = getPlayer(who);
@@ -1089,7 +1093,7 @@ public class WolfGame {
 	 */
 	private void observe(String who, String nick, String user, String host) {
 		// Logs the command
-        wolfBot.logEvent(nick + " issued the OBSERVE command", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the OBSERVE command", Javawolf.LOG_GAME, false);
 		
 		// Get player and target
 		WolfPlayer p = getPlayer(nick, user, host);
@@ -1140,7 +1144,7 @@ public class WolfGame {
 	 */
 	private void id(String who, String nick, String user, String host) {
 		// Logs the command
-        wolfBot.logEvent(nick + " issued the ID command", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the ID command", Javawolf.LOG_GAME, false);
 		
         // Get player and target
 		WolfPlayer p = getPlayer(nick, user, host);
@@ -1194,7 +1198,7 @@ public class WolfGame {
 	 */
 	private void shoot(String who, String nick, String user, String host) {
 		// Logs the command
-        wolfBot.logEvent(nick + " issued the SHOOT command", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the SHOOT command", Javawolf.LOG_GAME, false);
 
 		WolfPlayer p = getPlayer(nick, user, host);
         WolfPlayer target = getPlayer(who);
@@ -1287,7 +1291,7 @@ public class WolfGame {
 	 */
 	private void visit(String who, String nick, String user, String host) {
 		// Logs the command
-        wolfBot.logEvent(nick + " issued the VISIT command", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the VISIT command", Javawolf.LOG_GAME, false);
         
 		// get player and target
 		WolfPlayer p = getPlayer(nick, user, host);
@@ -1345,7 +1349,7 @@ public class WolfGame {
 	 */
 	private void see(String who, String nick, String user, String host) {
 		// Logs the command
-        wolfBot.logEvent(nick + " issued the SEE command", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the SEE command", Javawolf.LOG_GAME, false);
 
 		// Get player and target
 		WolfPlayer p = getPlayer(nick, user, host);
@@ -1396,7 +1400,7 @@ public class WolfGame {
 	 */
 	private void tavernKick(String who, String nick, String user, String host) {
 		// Logs the command
-        wolfBot.logEvent(nick + " issued the TAVERNKICK command", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the TAVERNKICK command", Javawolf.LOG_GAME, false);
 		
         // Get player and target
 		WolfPlayer p = getPlayer(nick, user, host);
@@ -1441,7 +1445,7 @@ public class WolfGame {
 	 */
 	private void tavernInvite(String who, String nick, String user, String host) {
 		// Logs the command
-        wolfBot.logEvent(nick + " issued the TAVERNINVITE command", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the TAVERNINVITE command", Javawolf.LOG_GAME, false);
 		
 		// get player and target
 		WolfPlayer p = getPlayer(nick, user, host);
@@ -1495,7 +1499,7 @@ public class WolfGame {
 	 */
 	private void kill(String who, String nick, String user, String host) {
 		// Logs the command
-		wolfBot.logEvent(nick + " issued the KILL command", Javawolf.LOG_CONSOLE, null);
+		wolfBot.logEvent(nick + " issued the KILL command", Javawolf.LOG_GAME, false);
         
         // Get the player and target
 		WolfPlayer p = getPlayer(nick, user, host);
@@ -1554,7 +1558,7 @@ public class WolfGame {
 	 */
 	private void lynch(String who, String nick, String user, String host) {
 		// Logs the command
-		wolfBot.logEvent(nick + " issued the LYNCH / RETRACT command", Javawolf.LOG_CONSOLE, null);
+		wolfBot.logEvent(nick + " issued the LYNCH / RETRACT command", Javawolf.LOG_GAME, false);
         
 		// gets the voter and votee
 		WolfPlayer p = getPlayer(nick, user, host);
@@ -1614,7 +1618,7 @@ public class WolfGame {
 	 */
 	private void join(String nick, String user, String host) {
 		// Logs the command
-        wolfBot.logEvent(nick + " issued the JOIN command", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the JOIN command", Javawolf.LOG_GAME, false);
         
 		// Is the game already in progress?
 		if(isRunning) {
@@ -1628,7 +1632,6 @@ public class WolfGame {
         } else {
             // Joins the game.
             addPlayer(nick, user, host);
-            wolfBot.logEvent("Force joined (" + nick + "," + user + "," + host + ")", Javawolf.LOG_CONSOLE, null);
         }
 	}
 	
@@ -1641,7 +1644,7 @@ public class WolfGame {
 	 */
 	private void leave(String nick, String user, String host) {
 		// Logs the command
-        wolfBot.logEvent(nick + " issued the LEAVE command", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the LEAVE command", Javawolf.LOG_GAME, false);
         
 		// Get player
 		WolfPlayer p = getPlayer(nick, user, host);
@@ -1686,7 +1689,7 @@ public class WolfGame {
 	 */
 	private void startgame(String nick, String user, String host, boolean forced) {
 		// Logs the command
-        wolfBot.logEvent(nick + " issued the START command", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the START command", Javawolf.LOG_GAME, false);
         
 		WolfPlayer p = getPlayer(nick, user, host);
 		long gamestart = System.currentTimeMillis();
@@ -1705,12 +1708,12 @@ public class WolfGame {
         } else if(getNumPlayers() < 4) {
 			chanmsg("You need at least four players to begin.");
 		} else {
-            wolfBot.logEvent("Getting config....", Javawolf.LOG_CONSOLE, null);
+            wolfBot.logEvent("Getting config....", Javawolf.LOG_GAME, false);
             // Gets the configuration
             WolfConfig wc = getConfig(getNumPlayers());
             if(wc == null) {
                 chanmsg("Configuration error: " + getNumPlayers() + " players is not supported.");
-                wolfBot.logEvent(getNumPlayers() + " is an unsupported player count.", Javawolf.LOG_ERROR, null);
+                wolfBot.logEvent(getNumPlayers() + " is an unsupported player count.", Javawolf.LOG_GAME, true);
                 return;
             }
 
@@ -1719,7 +1722,7 @@ public class WolfGame {
             isNight = true;
 
             // Welcome the players to the game & sets them alive.
-            wolfBot.logEvent("Welcoming players....", Javawolf.LOG_CONSOLE, null);
+            wolfBot.logEvent("Welcoming players....", Javawolf.LOG_GAME, false);
             String namelist = "";
             WolfPlayer temp;
             for (int m = 0; m < getNumPlayers(); m++) {
@@ -1732,7 +1735,7 @@ public class WolfGame {
             chanmsg(namelist + ". Welcome to wolfgame as hosted by javawolf, a java implementation of the party game Mafia.");
 
             // Assign the roles
-            wolfBot.logEvent("Assigning roles....", Javawolf.LOG_CONSOLE, null);
+            wolfBot.logEvent("Assigning roles....", Javawolf.LOG_GAME, false);
             // Set up the number of each
             int wolfcount = wc.wolfcount;
             int traitorcount = wc.traitorcount;
@@ -1910,7 +1913,7 @@ public class WolfGame {
 	private void checkForIdles() {
 		// Sanity check.
 		if(!isRunning) {
-            wolfBot.logEvent("Idler check run when game is off.", Javawolf.LOG_ERROR, null);
+            wolfBot.logEvent("Idler check run when game is off.", Javawolf.LOG_GAME, true);
 		}
 		// retrieve current time
 		long currentTime = System.currentTimeMillis();
@@ -2156,7 +2159,7 @@ public class WolfGame {
 	 * Starts the night
 	 */
 	private void startNight() {
-        wolfBot.logEvent("Starting the night.", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent("Starting the night.", Javawolf.LOG_GAME, false);
 		// Start timing the night
 		starttime = System.currentTimeMillis();
         isNight = true;
@@ -2192,7 +2195,7 @@ public class WolfGame {
 	 * Ends the night
 	 */
 	private void endNight() {
-        wolfBot.logEvent("Ending the night.", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent("Ending the night.", Javawolf.LOG_GAME, false);
 		timer.cancel();
 		
 		Random rand = new Random();
@@ -2600,7 +2603,7 @@ public class WolfGame {
         try { Thread.sleep(1500); } catch (InterruptedException e){}
 		// shuts down
         wolfBot.quitServer("Requested by " + nick);
-        wolfBot.logEvent(nick + "!" + user + "@" + host + " has shut down this bot.", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + "!" + user + "@" + host + " has shut down this bot.", Javawolf.LOG_ADMIN, false);
 		System.exit(0);
 	}
 	
@@ -2612,7 +2615,7 @@ public class WolfGame {
 	 */
 	private void fjoin(String who, String nick) {
 		// Logs the command
-        wolfBot.logEvent(nick + " issued the FJOIN command", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the FJOIN command", Javawolf.LOG_ADMIN, false);
         
 		// Is the game already in progress?
 		if (isRunning) {
@@ -2642,6 +2645,7 @@ public class WolfGame {
                     // Force join the user to the game.
                     } else {
                         addPlayer(who, username, hostmask);
+                        wolfBot.logEvent("Force joined (" + nick + "," + username + "," + hostmask + ")", Javawolf.LOG_ADMIN, false);
                         return;
                     } 
                 }
@@ -2661,7 +2665,7 @@ public class WolfGame {
 	 */
 	private void fleave(String who, String nick, String user, String host) {
 		// Logs the command
-        wolfBot.logEvent(nick + " issued the FLEAVE command on ", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the FLEAVE command on ", Javawolf.LOG_ADMIN, false);
 		// get who this is
 		WolfPlayer p = getPlayer(who);
 		if(p == null) {
@@ -2687,7 +2691,7 @@ public class WolfGame {
 			if(rmvPlayer(p.getNick(), p.getUser(), p.getHost())) {
 				chanmsg(formatBold(killedNick) + " was removed from the game.");
                 wolfBot.deVoice(mainChannel, killedNick);
-				System.out.println("[CONSOLE] : " + killedNick + " was ejected from the game.");
+                wolfBot.logEvent(killedNick + " was ejected from the game.", Javawolf.LOG_ADMIN, false);
 			} else {
 				msg(nick, "You cannot kick " + formatBold(killedNick) + " from the game at this time.");
 			}
@@ -2704,7 +2708,7 @@ public class WolfGame {
 	 */
 	private void fendgame(String nick, String user, String host) {
 		// Logs the command
-        wolfBot.logEvent(nick + " issued the FENDGAME command", Javawolf.LOG_CONSOLE, null);
+        wolfBot.logEvent(nick + " issued the FENDGAME command", Javawolf.LOG_ADMIN, false);
 		// notify channel
 		chanmsg(formatBold(nick) + " has forced the game to end.");
 		// clean up channel
@@ -2781,7 +2785,7 @@ public class WolfGame {
         WolfPlayer temp;
 		// sanity check
 		if(!isRunning) {
-			wolfBot.logEvent("<Playerdeath> called while game is not running!", Javawolf.LOG_ERROR, null);
+			wolfBot.logEvent("<Playerdeath> called while game is not running!", Javawolf.LOG_GAME, true);
 			return;
 		}
 		// If in wolf channel, kick him out.
@@ -2896,7 +2900,7 @@ public class WolfGame {
 		WolfPlayer p = getPlayer(nick, user, host);
         if( p != null && p.addAction(System.currentTimeMillis())) {
             // Player is flooding. Kick him out of the channel.
-            wolfBot.logEvent("Kicking " + nick + " for flooding.", Javawolf.LOG_CONSOLE, null);
+            wolfBot.logEvent("Kicking " + nick + " for flooding.", Javawolf.LOG_CONSOLE, false);
             wolfBot.kick(mainChannel, p.getNick(), "Channel flooding is not acceptable.");
             // Ignore anything further that he does.
             wolfBot.ignoredHosts.add(host);
@@ -2991,7 +2995,8 @@ public class WolfGame {
 		for (int m = 0; m < getNumPlayers(); m++) {
             temp = getPlayer(m);
 			if(isAlive(temp)) {
-				if(temp.countWolfRoles() > 0) msg(temp.getNick(), msg);
+				if(temp.countWolfRoles() > 0) 
+                    msg(temp.getNick(), msg);
 			}
 		}
 	}
@@ -3058,7 +3063,7 @@ public class WolfGame {
 	 * @param host
 	 */
 	private void ignoreHost(String who, String nick, String user, String host) {
-		System.out.println("[CONSOLE] : \"" + who + "\" was added to ignore list by " + nick + ".");
+        wolfBot.logEvent("\"" + who + "\" was added to ignore list by " + nick + ".", Javawolf.LOG_ADMIN, false);
 		wolfBot.ignoredHosts.add(who);
 	}
 	
@@ -3071,10 +3076,10 @@ public class WolfGame {
 	 * @param host
 	 */
 	private void unignoreHost(String who, String nick, String user, String host) {
-		System.out.println("[CONSOLE] : \"" + who + "\" was removed from the ignore list by " + nick + ".");
+        wolfBot.logEvent("\"" + who + "\" was removed from the ignore list by " + nick + ".", Javawolf.LOG_ADMIN, false);
 		if(!wolfBot.ignoredHosts.remove(who)) {
 			// Couldn't remove target.
-			System.err.println("[CONSOLE] : Could not find hostmask \"" + who + "\" in ignore list.");
+            wolfBot.logEvent("Could not find hostmask \"" + who + "\" in ignore list.", Javawolf.LOG_ADMIN, true);
 			chanmsg("Could not find hostmask \"" + who + "\" in ignore list.");
 		}
 	}
@@ -3099,7 +3104,7 @@ public class WolfGame {
 		for (int m = 0; m < nCfgs; m++) {
 			if(configs[m] == null) {
 				// some bug
-                wolfBot.logEvent("Config #" + m + " is null!", Javawolf.LOG_ERROR, null);
+                wolfBot.logEvent("Config #" + m + " is null!", Javawolf.LOG_PLAYERCONFIG, true);
 				return null;
 			}
 			if((num <= configs[m].high) && (num >= configs[m].low)) {
