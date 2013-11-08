@@ -19,10 +19,13 @@ Enhancements:
   - Implement !roles command
   - Implement "exotic mode", where roles chosen are random
   + Add ability to set variables
-  - Implement !simple command
-  - Implement !help command
-  - Implement !away command
-  - Implement !back command
-  - Implement !rules command
+  + Implement !simple command
+  + Implement !help command
+  + Implement !away command
+  + Implement !back command
+  + Implement !rules command
 
 Bugs:
+  + Sometimes not all users are devoiced when game ends
+  + !ping doe not check for users set to !away
+  + !simple does not affect the way messages are sent to users

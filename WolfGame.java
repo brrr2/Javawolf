@@ -4,9 +4,12 @@
 package Javawolf;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Timer;
@@ -31,6 +34,10 @@ public class WolfGame {
     private ArrayList<WolfPlayer> players;
     private ArrayList<WolfPlayer> wolfTeam;
     private ArrayList<WolfPlayer> villagers;
+    // Hostmask lists
+    private ArrayList<String> awayList;
+    private ArrayList<String> simpleList;
+    
     // Config list
     private static WolfConfig[] configs = new WolfConfig[64];
     private static int nCfgs = 0;
@@ -112,6 +119,8 @@ public class WolfGame {
         players = new ArrayList<WolfPlayer>();
         wolfTeam = new ArrayList<WolfPlayer>();
         villagers = new ArrayList<WolfPlayer>();
+        awayList = loadHostList("away.txt");
+        simpleList = loadHostList("simple.txt");
         // loads config
         loadPConfig(pConfig);
     }
@@ -222,6 +231,34 @@ public class WolfGame {
         }
         // return the player
         return matched_player;
+    }
+    
+    private ArrayList<String> loadHostList(String path) {
+        ArrayList<String> hostList = new ArrayList<String>();
+        try {
+            BufferedReader in = new BufferedReader(new FileReader(path));
+            while (in.ready()) {
+                hostList.add(in.readLine());
+            }
+            in.close();
+            return hostList;
+        } catch (IOException e){
+            wolfBot.logEvent("Creating " + path + "!", Javawolf.LOG_CONSOLE, false);
+            saveHostList(hostList, path); 
+            return hostList; // return empty list if unable to read file
+        } 
+    }
+    
+    private void saveHostList(ArrayList<String> hostList, String path) {
+        try {
+            PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(path)));
+            for (int ctr = 0; ctr < hostList.size(); ctr++){
+                out.println(hostList.get(ctr));
+            }
+            out.close();
+        } catch (IOException e){
+            wolfBot.logEvent("Unable to write to " + path + "!", Javawolf.LOG_CONSOLE, true);
+        }  
     }
     
     /**
@@ -2015,21 +2052,50 @@ public class WolfGame {
     private void simple(String nick, String user, String host) {
         // Logs the command
         wolfBot.logEvent(nick + " issued the SIMPLE command", Javawolf.LOG_GAME, false);
+        
+        if (simpleList.contains(host)){
+            simpleList.remove(host);
+            msg(nick, "You now no longer receive simple role instructions.");
+        } else {
+            simpleList.add(host);
+            msg(nick, "You now receive simple role instructions.");
+        }
+        saveHostList(simpleList, "simple.txt");
     }
     
     private void rules(String nick, String user, String host) {
         // Logs the command
         wolfBot.logEvent(nick + " issued the RULES command", Javawolf.LOG_GAME, false);
+        
+        chanmsg(mainChannel + " channel rules: 1) Be nice to others. 2) Do not share information after death. 3) No bots allowed. 4) Do not play with clones.");
+        chanmsg("5) Do not quit unless you need to leave. 6) Keep it safe for work. 7) Do not paste private messages from the bot during the game. 8) Use common sense. 9) Waiting for timeouts is discouraged.");
     }
     
     private void away(String nick, String user, String host) {
         // Logs the command
         wolfBot.logEvent(nick + " issued the AWAY command", Javawolf.LOG_GAME, false);
+        
+        if (awayList.contains(host)){
+            awayList.remove(host);
+            msg(nick, "You are no longer marked as away.");
+        } else {
+            awayList.add(host);
+            msg(nick, "You are now marked as away.");
+        }
+        saveHostList(awayList, "away.txt");
     }
     
     private void back(String nick, String user, String host) {
         // Logs the command
         wolfBot.logEvent(nick + " issued the BACK command", Javawolf.LOG_GAME, false);
+        
+        if (awayList.contains(host)){
+            awayList.remove(host);
+            msg(nick, "You are no longer marked as away.");
+            saveHostList(awayList, "away.txt");
+        } else {
+            msg(nick, "You are not marked as away.");
+        }
     }
     
     /**
