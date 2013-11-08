@@ -21,6 +21,8 @@ Enhancements:
   + Add ability to set variables
   - Implement !simple command
   - Implement !help command
+  - Implement !away command
+  - Implement !back command
+  - Implement !rules command
 
 Bugs:
-  + Sometimes not all users are devoiced when game ends

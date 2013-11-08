@@ -520,12 +520,28 @@ public class WolfGame {
         } else if(cmd.equals("myrole")) {
             // PMs you your role
             myrole(nick, user, host);
-        } else if (cmd.equals("roles")){
-            
-        } else if (cmd.equals("simple")){
-            
-        } else if (cmd.equals("ping")){
-            
+        } else if (cmd.equals("roles")) {
+            // Lists all the roles
+            roles(nick, user, host);
+        } else if (cmd.equals("simple")) {
+            // Toggles simple status
+            simple(nick, user, host);
+        } else if (cmd.equals("ping")) {
+            // Echoes each nick in the channel
+            ping(nick, user, host);
+        } else if (cmd.equals("help")) {
+            // Outputs a list of commands or usage of a command
+            if (args != null && args.length > 1) {
+                help(args[1], nick, user, host);
+            } else {
+                help(null, nick, user, host);
+            }
+        } else if (cmd.equals("rules")) {
+            rules(nick, user, host);
+        } else if (cmd.equals("away")) {
+            away(nick, user, host);
+        } else if (cmd.equals("back")) {
+            back(nick, user, host);
         } else if(cmd.equals("fstart")) {
             // Mod command: Forces the game to start.
             if(admincheck(host)) {
@@ -676,13 +692,13 @@ public class WolfGame {
     private void waitstart(String nick, String user, String host) {
         // Is game running?
         if(isRunning) {
-            notice(nick, "The game is already running.");
+            msg(nick, "The game is already running.");
             return;
         }
         // Is the user playing?
         WolfPlayer p = getPlayer(nick, user, host);
         if(p == null) {
-            notice(nick, "You aren't even playing.");
+            msg(nick, "You aren't even playing.");
         // Enough !waits yet?
         } else if(nWaitTimes >= maxWaitTimes) {
             chanmsg("The wait limit has already been reached.");
@@ -710,7 +726,7 @@ public class WolfGame {
         WolfPlayer p = getPlayer(nick, user, host);
         // Is game running?
         if (!isRunning) {
-            notice(nick, "The game is not running.");
+            msg(nick, "The game is not running.");
         // Is the player even playing?
         } else if (p == null) {
             msg(nick, "You aren't even playing.");
@@ -742,10 +758,10 @@ public class WolfGame {
         // Is the player even playing?
         WolfPlayer p = getPlayer(nick, user, host);
         if(p == null) {
-            notice(nick, "You aren't even playing.");
+            msg(nick, "You aren't even playing.");
         // Is the player alive?
         } else if(!isAlive(p)) {
-            notice(nick, "You have died already and thus cannot use the stats command.");
+            msg(nick, "You have died already and thus cannot use the stats command.");
         } else {
             // List all the living players.
             int numLiving = getNumVillagers() + getNumWolfTeam();
@@ -829,16 +845,16 @@ public class WolfGame {
         WolfPlayer p = getPlayer(nick, user, host);
         // Is the game even running?
         if(!isRunning) {
-            notice(nick, "No game is currently running.");
+            msg(nick, "No game is currently running.");
         // Is the player even playing?
         } else if(p == null) {
-            notice(nick, "You aren't even playing.");
+            msg(nick, "You aren't even playing.");
         // Is the player alive?
         } else if(!isAlive(p)) {
-            notice(nick, "You have died already and thus cannot use the votes command.");
+            msg(nick, "You have died already and thus cannot use the votes command.");
         // Is it night
         } else if(isNight){
-            notice(nick, "It is currently night.");
+            msg(nick, "It is currently night.");
         // List all the players.
         } else {
             int numLiving = getNumVillagers() + getNumWolfTeam();
@@ -940,7 +956,7 @@ public class WolfGame {
         
         // Is the game even running?
         if(!isRunning) {
-            notice(nick, "No game is running.");
+            msg(nick, "No game is running.");
         // Is the player even playing?
         } else if(p == null) {
             msg(nick, "You aren't even playing.");
@@ -955,7 +971,7 @@ public class WolfGame {
             msg(nick, "You have already cursed someone this night.");
         // Has a target been selected
         } else if(who == null) {
-            notice(nick, "You must select a target.");
+            msg(nick, "You must select a target.");
         // Is the target playing?
         } else if(target == null) {
             msg(nick, who + " is not playing.");
@@ -1002,22 +1018,22 @@ public class WolfGame {
         
         // Is the game even running?
         if(!isRunning) {
-            notice(nick, "No game is running.");
+            msg(nick, "No game is running.");
         // Is the player even playing?
         } else if(p == null) {
-            notice(nick, "You aren't even playing.");
+            msg(nick, "You aren't even playing.");
         // Is the player a medium?
         } else if (!p.isMedium()) {
-            notice(nick, "Only mediums can raise other players.");
+            msg(nick, "Only mediums can raise other players.");
         // Is it day?
         } else if (isNight) {
-            notice(nick, "You may only raise players during the day.");
+            msg(nick, "You may only raise players during the day.");
         // Has the player not yet raised anyone?
         } else if(p.raised != null) {
             msg(nick, "You have already raised someone today.");
         // Has a target been selected
         } else if(who == null) {
-            notice(nick, "You must select a target.");
+            msg(nick, "You must select a target.");
         // Is the target playing?
         } else if(target == null) {
             msg(nick, who + " is not playing.");
@@ -1053,22 +1069,22 @@ public class WolfGame {
         
         // Is the game even running?
         if(!isRunning) {
-            notice(nick, "No game is running.");
+            msg(nick, "No game is running.");
         // Is the player even playing?
         } else if(p == null) {
-            notice(nick, "You aren't even playing.");
+            msg(nick, "You aren't even playing.");
         // Is the player a guardian angel?
         } else if(!p.isAngel()) {
-            notice(nick, "Only guardian angels can guard other players.");
+            msg(nick, "Only guardian angels can guard other players.");
         // Is it night?
         } else if(!isNight) {
-            notice(nick, "You may only guard during the night.");
+            msg(nick, "You may only guard during the night.");
         // Has the player not yet guarded?
         } else if(p.guarded != null) {
             msg(nick, "You are already guarding " + p.guarded.getNickBold() + " tonight.");
         // Has a target been selected
         } else if(who == null) {
-            notice(nick, "You must select a target.");
+            msg(nick, "You must select a target.");
         // Is the target playing?
         } else if(target == null) {
             msg(nick, who + " is not playing.");
@@ -1104,25 +1120,25 @@ public class WolfGame {
         
         // Is the game even running?
         if(!isRunning) {
-            notice(nick, "No game is running.");
+            msg(nick, "No game is running.");
         // Is the player even playing?
         } else if(p == null) {
-            notice(nick, "You aren't even playing.");
+            msg(nick, "You aren't even playing.");
         // Is the player a werecrow?
         } else if(!p.isWerecrow()) {
-            notice(nick, "Only werecrows can observe other players.");
+            msg(nick, "Only werecrows can observe other players.");
         // Is it night?
         } else if(!isNight) {
-            notice(nick, "You may only observe during the night.");
+            msg(nick, "You may only observe during the night.");
         // Has the player not yet observed?
         } else if(p.observed != null) {
-            notice(nick, "You are already observing " + p.observed.getNickBold() + " tonight.");
+            msg(nick, "You are already observing " + p.observed.getNickBold() + " tonight.");
         // Has target been selected
         } else if(who == null) {
-            notice(nick, "You must select a target.");
+            msg(nick, "You must select a target.");
         // Is the target playing?
         } else if(target == null) {
-            notice(nick, who + " is not playing.");
+            msg(nick, who + " is not playing.");
         // Is the target alive? 
         } else if(!isAlive(target)) {
             msg(nick, target.getNick() + " is already dead.");
@@ -1170,7 +1186,7 @@ public class WolfGame {
             msg(nick, "You have already identified someone today.");
         // Has a target been selected
         } else if(who == null) {
-            notice(nick, "You must select a target.");
+            msg(nick, "You must select a target.");
         // Is the target playing?
         } else if(target == null) {
             msg(nick, who + " is not playing.");
@@ -1207,31 +1223,31 @@ public class WolfGame {
         WolfPlayer target = getPlayer(who);
         // Is the game even running?
         if(!isRunning) {
-            notice(nick, "No game is running.");
+            msg(nick, "No game is running.");
         // Is the player even playing?
         } else if(p == null) {
-            notice(nick, "You aren't even playing.");
+            msg(nick, "You aren't even playing.");
         // Is the player a seer?
         } else if(!p.isGunner()) {
-            notice(nick, "You don't have a gun.");
+            msg(nick, "You don't have a gun.");
         // Is it day?
         } else if(isNight) {
-            notice(nick, "You can only shoot during the day.");
+            msg(nick, "You can only shoot during the day.");
         // Has a target been selected
         } else if(who == null) {
-            notice(nick, "You must select a target.");
+            msg(nick, "You must select a target.");
         // Is the target playing?
         } else if(target == null) {
-            notice(nick, who + " is not playing.");
+            msg(nick, who + " is not playing.");
         } else if(target == p) {
             // lol, don't suicide
-            notice(nick, "You're holding it the wrong way!");
+            msg(nick, "You're holding it the wrong way!");
         // Is the target alive? 
         } else if(!isAlive(target)) {
-            notice(nick, target.getNick() + " is already dead.");
+            msg(nick, target.getNick() + " is already dead.");
         // Do you have any bullets left?
         } else if(p.numBullets == 0) {
-            notice(nick, "You have no more bullets remaining.");
+            msg(nick, "You have no more bullets remaining.");
         // He can now fire.
         } else {
             chanmsg(p.getNickBold() + " raises his/her gun and fires at " +
@@ -1316,7 +1332,7 @@ public class WolfGame {
             msg(nick, "You have already visited " + p.visited.getNickBold() + " tonight.");
         // Has a target been selected
         } else if (who == null) {
-            notice(nick, "You must select a target.");
+            msg(nick, "You must select a target.");
         // Is the target playing?
         } else if(target == null) {
             msg(nick, who + " is not playing.");
@@ -1374,7 +1390,7 @@ public class WolfGame {
             msg(nick, "You have already had a vision this night.");
             // Has a target been selected
         } else if (who == null) {
-            notice(nick, "You must select a target.");
+            msg(nick, "You must select a target.");
             // Is the target playing?
         } else if (target == null) {
             msg(nick, who + " is not playing.");
@@ -1421,7 +1437,7 @@ public class WolfGame {
             msg(nick, "Only drunks can eject other players.");
         // Has a target been selected
         } else if (who == null) {
-            notice(nick, "You must select a target.");
+            msg(nick, "You must select a target.");
         // Is the target playing?
         } else if (target == null) {
             msg(nick, who + " is not playing.");
@@ -1466,7 +1482,7 @@ public class WolfGame {
             msg(nick, "Only drunks can invite other players.");
         // Has a target been selected
         } else if (who == null) {
-            notice(nick, "You must select a target.");
+            msg(nick, "You must select a target.");
         // Is the target playing?
         } else if (target == null) {
             msg(nick, who + " is not playing.");
@@ -1526,7 +1542,7 @@ public class WolfGame {
             msg(nick, "Killing may only be done during the night.");
         // Has a target been selected
         } else if (who == null) {
-            notice(nick, "You must select a target.");
+            msg(nick, "You must select a target.");
         // Is the target even playing?
         } else if (target == null) {
             msg(nick, who + " is not playing.");
@@ -1574,16 +1590,16 @@ public class WolfGame {
 
         // Is the game even running?
         if (!isRunning) {
-            notice(nick, "No game is running.");
+            msg(nick, "No game is running.");
         // Is the voter playing?
         } else if (p == null) {
-            notice(nick, "You aren't even playing.");
+            msg(nick, "You aren't even playing.");
         // Dead people may not vote
         } else if (!isAlive(p)) {
-            notice(nick, "Dead players may not vote.");
+            msg(nick, "Dead players may not vote.");
         // Game is running, is it night?
         } else if (isNight) {
-            notice(nick, "You can only lynch during the day.");
+            msg(nick, "You can only lynch during the day.");
         // Was this a retraction?
         } else if (who == null) {
             if (p.voted != null) {
@@ -1630,10 +1646,10 @@ public class WolfGame {
 
         // Is the game already in progress?
         if (isRunning) {
-            notice(nick, "The game is already in progress. Please wait patiently for it to end.");
+            msg(nick, "The game is already in progress. Please wait patiently for it to end.");
         // Has player already joined?
         } else if (getPlayer(nick, user, host) != null) {
-            notice(nick, "You have already joined the game.");
+            msg(nick, "You have already joined the game.");
         // Has max player count been reached
         } else if (getNumPlayers() == MAX_WOLFPLAYERS) {
             chanmsg("Maximum number of players has been reached.");
@@ -1708,10 +1724,10 @@ public class WolfGame {
 
         // Has the game already begun?
         if (isRunning) {
-            notice(nick, "The game has already begun.");
+            msg(nick, "The game has already begun.");
         // Is the starter even in the game?
         } else if (p == null) {
-            notice(nick, "You're currently not joined.");
+            msg(nick, "You're currently not joined.");
         // Waited long enough?
         } else if ((gamestart < gameAllowStart) && !forced) {
             long secondsleft = (gameAllowStart - gamestart) / 1000;
@@ -1917,6 +1933,103 @@ public class WolfGame {
             wolfBot.setMode(mainChannel, "+m");
             startNight();
         }
+    }
+    
+    private void help(String command, String nick, String user, String host){
+        // Logs the command
+        wolfBot.logEvent(nick + " issued the HELP command", Javawolf.LOG_GAME, false);
+        
+        if (command == null) {
+            msg(nick, "Commands: help, simple, back, quit, votes, stats, away, ping, start, retract, goat, shoot, lynch, coin, wait, join, roles, rules, admins");
+        } else {
+            if (command.equalsIgnoreCase("help")) {
+                msg(nick, "!help: Gets help");
+            } else if (command.equalsIgnoreCase("simple")) {
+                msg(nick, "!simple: If you want the bot to NOTICE you for every interaction");
+            } else if (command.equalsIgnoreCase("back")) {
+                msg(nick, "!back: Unmarks away status");
+            } else if (command.equalsIgnoreCase("away")) {
+                msg(nick, "!away: Use this to activate your away status (so you aren't pinged).");
+            } else if (command.equalsIgnoreCase("quit")) {
+                msg(nick, "!quit: Quits the game.");
+            } else if (command.equalsIgnoreCase("leave")) {
+                msg(nick, "!leave: Quits the game.");
+            } else if (command.equalsIgnoreCase("votes")) {
+                msg(nick, "!votes: Displays the voting statistics.");
+            } else if (command.equalsIgnoreCase("stats")) {
+                msg(nick, "!stats: Display the player statistics");
+            } else if (command.equalsIgnoreCase("ping")) {
+                msg(nick, "!ping: Pings the channel to get people's attention. Rate-Limited.");
+            } else if (command.equalsIgnoreCase("start")) {
+                msg(nick, "!start: Starts a game of Werewolf");
+            } else if (command.equalsIgnoreCase("retract")) {
+                msg(nick, "!retract: Takes back your vote during the day (for whom to lynch)");
+            } else if (command.equalsIgnoreCase("goat")) {
+                msg(nick, "!goat: Use a goat to interact with anyone in the channel during the day");
+            } else if (command.equalsIgnoreCase("shoot")) {
+                msg(nick, "!shoot: Use this to fire off a bullet at someone in the day if you have bullets");
+            } else if (command.equalsIgnoreCase("lynch")) {
+                msg(nick, "!lynch: Use this to vote for a candidate to be lynched");
+            } else if (command.equalsIgnoreCase("vote")) {
+                msg(nick, "!vote: Use this to vote for a candidate to be lynched");
+            } else if (command.equalsIgnoreCase("coin")) {
+                msg(nick, "!coin: It's a bad idea to base any decisions on this command.");
+            } else if (command.equalsIgnoreCase("wait")) {
+                msg(nick, "!wait: Increase the wait time (before !start can be used)");
+            } else if (command.equalsIgnoreCase("rules")) {
+                msg(nick, "!rules: Displays the rules");
+            } else if (command.equalsIgnoreCase("roles")) {
+                msg(nick, "!roles: Display which roles are enabled and when");
+            } else if (command.equalsIgnoreCase("join")) {
+                msg(nick, "!join: Either starts a new game of Werewolf or joins an existing game that has not started yet.");
+            } else if (command.equalsIgnoreCase("admins")) {
+                msg(nick, "!admins: Pings the admins that are available.");
+            } else {
+                msg(nick, "Command not found.");
+            }
+        }
+    }
+    
+    private void ping(String nick, String user, String host){
+        // Logs the command
+        wolfBot.logEvent(nick + " issued the PING command", Javawolf.LOG_GAME, false);
+        
+        // Has the game already begun?
+        if (isRunning) {
+            msg(nick, "The game has already begun.");
+        } else {
+            User[] users = wolfBot.getUsers(mainChannel);
+            String outStr = "PING!";
+            for (int ctr = 0; ctr < users.length; ctr++) {
+                outStr += " " + users[ctr].getNick();
+            }
+            chanmsg(outStr);
+        }
+    }
+    
+    private void roles(String nick, String user, String host) {
+        // Logs the command
+        wolfBot.logEvent(nick + " issued the ROLES command", Javawolf.LOG_GAME, false);
+    }
+    
+    private void simple(String nick, String user, String host) {
+        // Logs the command
+        wolfBot.logEvent(nick + " issued the SIMPLE command", Javawolf.LOG_GAME, false);
+    }
+    
+    private void rules(String nick, String user, String host) {
+        // Logs the command
+        wolfBot.logEvent(nick + " issued the RULES command", Javawolf.LOG_GAME, false);
+    }
+    
+    private void away(String nick, String user, String host) {
+        // Logs the command
+        wolfBot.logEvent(nick + " issued the AWAY command", Javawolf.LOG_GAME, false);
+    }
+    
+    private void back(String nick, String user, String host) {
+        // Logs the command
+        wolfBot.logEvent(nick + " issued the BACK command", Javawolf.LOG_GAME, false);
     }
     
     /**
